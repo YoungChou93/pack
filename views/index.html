@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <script type="text/javascript"
+            src="/static/bootstrap/js/jquery-2.2.1.min.js"></script>
+    <link rel="stylesheet"
+          href="/static/bootstrap/css/bootstrap.min.css">
+    <script type="text/javascript"
+            src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <title>天气</title>
+</head>
+<style type="text/css">
+    html,body {
+        background-color: white;
+        font-family: 微软雅黑;
+    }
+    h2{
+        margin-top: 50px;
+        margin-bottom: 50px;
+    }
+
+    table{
+        width:100%;
+    }
+
+</style>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-md-2">
+        </div>
+        <div class="col-md-8 text-center">
+            <h2>仿真资源镜像封装</h2>
+            <table class="text-center">
+                <tr>
+                    <td>
+                        <label class="h4">镜像名称：</label>
+                    </td>
+                    <td>
+                        <input type="text" class="form-control" name="imagename" value="{{.imagename}}"/>
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>
+                        <label class="h4">版本号：</label>
+                    </td>
+                    <td>
+                        <input type="text" class="form-control" name="version" value="{{.version}}"/>
+                    </td>
+                    <td>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                         <label class="h4">基础镜像：</label>
+                    </td>
+                    <td>
+                        <select class="form-control" >
+                            <option>Ubuntu</option>
+                        </select>
+                    </td>
+                    <td>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-primary">生成DockerFile</button>
+                        <button type="button" class="btn btn-primary">预览</button>
+                        <button type="button" class="btn btn-primary">封装</button>
+                    </td>
+                    <td>
+
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>
