@@ -5,6 +5,11 @@ import (
 	"os"
 	"io"
 	"fmt"
+	"github.com/docker/docker/client"
+	"io/ioutil"
+	"github.com/jhoonb/archivex"
+	"github.com/docker/docker/api/types"
+	"golang.org/x/net/context"
 )
 
 type UploadController struct {
@@ -21,6 +26,7 @@ func (this *UploadController) Post() {
 	imagename := this.GetString("imagename")
 	version := this.GetString("version")
 	software,header,_ := this.GetFile("software")
+	command := this.GetString("command")
 	baseimage := this.GetString("baseimage")
 
 
@@ -30,13 +36,14 @@ func (this *UploadController) Post() {
 	dirpath:=packpath+imagename+version
         os.MkdirAll(dirpath,os.ModePerm)
 
+
 	var delimiter string
 	if os.IsPathSeparator('\\') {  //前边的判断是否是系统的分隔符
 		delimiter = "\\"
 	} else {
 		delimiter = "/"
 	}
-	f, err := os.OpenFile(dirpath+delimiter+header.Filename, os.O_CREATE, 0777)
+	f, err := os.OpenFile(dirpath+delimiter+header.Filename, os.O_CREATE | os.O_RDWR, 0777)
 	if err != nil {
 		fmt.Println("文件打开失败")
 		return
@@ -45,13 +52,13 @@ func (this *UploadController) Post() {
 
 	_,err=io.Copy(f, software)
 	if err != nil {
-		fmt.Println("文件保存失败")
+		fmt.Println("文件保存失败"+err.Error())
 		return
 	}
 
 
 	//生成Dockerfile
-	dockerfile, err := os.OpenFile(dirpath+delimiter+"Dockerfile", os.O_CREATE, 0777)
+	dockerfile, err := os.OpenFile(dirpath+delimiter+"Dockerfile", os.O_CREATE | os.O_RDWR, 0777)
 	if err != nil {
 		fmt.Println("文件打开失败")
 		return
@@ -59,11 +66,41 @@ func (this *UploadController) Post() {
 	defer dockerfile.Close()
 
 	io.WriteString(dockerfile,"FROM"+" "+baseimage)
-	io.WriteString(dockerfile,"\r\n")
-	io.WriteString(dockerfile,"ADD"+" "+header.Filename+" "+"C:\\software")
-	io.WriteString(dockerfile,"\r\n")
-	io.WriteString(dockerfile,"CMD"+" "+"["+"C:\\software"+header.Filename+"]")
-	io.WriteString(dockerfile,"\r\n")
+	io.WriteString(dockerfile,"\n")
+	io.WriteString(dockerfile,"ADD"+" "+header.Filename+" "+"/usr/local")
+	io.WriteString(dockerfile,"\n")
+	io.WriteString(dockerfile,"CMD"+" "+command)
+
+	//封装镜像
+	tarpath :=packpath+"tar/"
+	os.MkdirAll(tarpath,os.ModePerm)
+
+	tar := new(archivex.TarFile)
+	tar.Create(packpath+"tar/"+imagename+version)
+	tar.AddAll(dirpath, false)
+	tar.Close()
+	dockerBuildContext, err := os.Open(tarpath+imagename+version+".tar")
+	defer dockerBuildContext.Close()
+	defaultHeaders := map[string]string{"Content-Type": "application/tar"}
+	cli, _ := client.NewClient("unix:///var/run/docker.sock", "v1.27", nil, defaultHeaders)
+	options := types.ImageBuildOptions{
+		SuppressOutput: true,
+		Remove:         true,
+		ForceRemove:    true,
+		PullParent:     true,
+		Tags:           []string{imagename+":"+version}}
+	buildResponse, err := cli.ImageBuild(context.Background(), dockerBuildContext, options)
+	//defer buildResponse.Body.Close()
+	if err != nil {
+		fmt.Printf("%s", err.Error())
+	}
+	//time.Sleep(5000 * time.Millisecond)
+	fmt.Printf("********* %s **********", buildResponse.OSType)
+	response, err := ioutil.ReadAll(buildResponse.Body)
+	if err != nil {
+		fmt.Printf("%s", err.Error())
+	}
+	fmt.Println(string(response))
 
 	this.Ctx.Redirect(302,"/upload")
 
