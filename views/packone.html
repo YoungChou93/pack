@@ -15,20 +15,24 @@
         background-color: white;
         font-family: 微软雅黑;
     }
-    h2{
-        margin-top: 50px;
-        margin-bottom: 50px;
+    h4{
+        margin: 2px;
     }
 
     table{
         width:100%;
     }
 
+    .td1{
+        text-align: right;
+        width:150px;
+    }
+
 </style>
 <script type="text/javascript">
     $(function() {
 
-        $.post("/listimages", function (result) {
+        $.post("/localimage/list", function (result) {
             $.each(result, function (index, element) {
                 var optionStr = "<option>" + element.RepoTags[0] + "</option>";
                 $("#images").append(optionStr)
@@ -40,16 +44,14 @@
 
 </script>
 <body>
-<div class="container">
+<div class="container-fluid">
     <div class="row">
-        <div class="col-md-2">
-        </div>
-        <div class="col-md-8 text-center">
-            <h2>仿真资源镜像封装</h2>
+        <div class="panel panel-primary">
+            <div class="panel-heading"><h4>封装</h4></div>
             <form action="/upload" method="post"  enctype="multipart/form-data">
-            <table class="text-center">
+            <table class=" table-hover table-condensed text-center">
                 <tr>
-                    <td>
+                    <td class="td1">
                         <label class="h4">镜像名称：</label>
                     </td>
                     <td>
@@ -58,7 +60,7 @@
                     <td></td>
                 </tr>
                 <tr>
-                    <td>
+                    <td class="td1">
                         <label class="h4">版本号：</label>
                     </td>
                     <td>
@@ -67,7 +69,7 @@
                     <td></td>
                 </tr>
                 <tr>
-                    <td>
+                    <td class="td1">
                         <label class="h4">软件：</label>
                     </td>
                     <td>
@@ -76,7 +78,25 @@
                     <td></td>
                 </tr>
                 <tr>
+                    <td class="td1">
+                        <label class="h4">执行命令：</label>
+                    </td>
                     <td>
+                        <input type="text"  class="form-control" name="run"/>
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="td1">
+                        <label class="h4">环境变量：</label>
+                    </td>
+                    <td>
+                        <input type="text"  class="form-control" name="env"/>
+                    </td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="td1">
                         <label class="h4">启动命令：</label>
                     </td>
                     <td>
@@ -85,7 +105,7 @@
                     <td></td>
                 </tr>
                 <tr>
-                    <td>
+                    <td class="td1">
                         <label class="h4">基础镜像：</label>
                     </td>
                     <td>
@@ -106,7 +126,7 @@
                 </tr>
             </table>
             </form>
-        </div>
+    </div>
     </div>
 </div>
 </body>

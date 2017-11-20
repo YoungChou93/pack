@@ -8,78 +8,164 @@
           href="/static/bootstrap/css/bootstrap.min.css">
     <script type="text/javascript"
             src="/static/bootstrap/js/bootstrap.min.js"></script>
-    <title>天气</title>
+    <title>主页</title>
+    <style type="text/css">
+        html,body {
+            width:100%;
+            height:100%;
+            background-color: white;
+            font-family: 微软雅黑;
+            overflow:scroll;
+            overflow-x:hidden;
+            overflow-Y:hidden;
+        }
+        h2{
+            margin-top: 50px;
+            margin-bottom: 50px;
+        }
+
+        table{
+            width:100%;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            margin: 15px;
+            padding: 0;
+        }
+
+        .sidebar-menu > li {
+            margin: 5px;
+            padding: 0;
+        }
+        .sidebar-menu > li > a > .fa{
+            width: 20px;
+        }
+        .sidebar-menu > li {
+            margin: 0;
+        }
+
+        .sidebar-menu > li >a {
+            padding: 8px 5px 8px 15px;
+            display: block;
+            font-size: 14px;
+            margin: 0px 0px;
+            text-decoration:none;
+        }
+
+        .fa {
+            display: inline-block;
+            font-family: FontAwesome;
+            font-style: normal;
+            font-weight: normal;
+            line-height: 1;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .kube{
+            width: 100%;
+            text-align: center;
+        }
+
+
+
+        .kube > a:link {
+            font-size: 18px;
+            color: white;
+            text-decoration:none;
+        }
+        .kube > a:visited {
+            color: white;
+            text-decoration:none;
+        }
+        .kube > a:hover {
+            color: white;
+            text-decoration:none;
+        }
+        .kube > a:active {
+            color: white;
+            text-decoration:none;
+        }
+
+    </style>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('ul > li').click(function (e) {
+                //e.preventDefault();
+                $('ul > li').removeClass('active');
+                $(this).addClass('active');
+            });
+
+        });
+        
+
+        var isShow = true;
+        function theSwitch() {
+            var moveLeft = $("#sidebar").width();
+            if (isShow) {
+                $("#sidebar").animate({
+                    marginLeft: -(moveLeft - 15)
+                }, 200, "linear", function () {
+                    isShow = false;
+                });
+                $(".main").animate({margin: "0 auto", marginLeft: 15,paddingRight: 30}, "linear");
+            } else {
+                $("#sidebar").animate({
+                    marginLeft: 0
+                }, 200, "linear", function () {
+                    isShow = true;
+                });
+                $(".main").animate({marginLeft: moveLeft,paddingRight: 230}, "linear");
+            }
+        }
+    </script>
 </head>
-<style type="text/css">
-    html,body {
-        background-color: white;
-        font-family: 微软雅黑;
-    }
-    h2{
-        margin-top: 50px;
-        margin-bottom: 50px;
-    }
-
-    table{
-        width:100%;
-    }
-
-</style>
 <body>
-<div class="container">
-    <div class="row">
-        <div class="col-md-2">
-        </div>
-        <div class="col-md-8 text-center">
-            <h2>仿真资源镜像封装</h2>
-            <table class="text-center">
-                <tr>
-                    <td>
-                        <label class="h4">镜像名称：</label>
-                    </td>
-                    <td>
-                        <input type="text" class="form-control" name="imagename" value="{{.imagename}}"/>
-                    </td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td>
-                        <label class="h4">版本号：</label>
-                    </td>
-                    <td>
-                        <input type="text" class="form-control" name="version" value="{{.version}}"/>
-                    </td>
-                    <td>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                         <label class="h4">基础镜像：</label>
-                    </td>
-                    <td>
-                        <select class="form-control" >
-                            <option>Ubuntu</option>
-                        </select>
-                    </td>
-                    <td>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
+<div  style="height:40px;width:100%;background-color: rgba(42,43,41,0.8)">
+    <span class="glyphicon glyphicon-menu-hamburger" style="font-size:30px;left:10px;top:5px;color:white" onclick="theSwitch()"></span>
+</div>
+<div style="height:100%;width:220px;background-color:#122b40;position: absolute;" id="sidebar">
 
-                    </td>
-                    <td>
-                        <button type="button" class="btn btn-primary">生成DockerFile</button>
-                        <button type="button" class="btn btn-primary">预览</button>
-                        <button type="button" class="btn btn-primary">封装</button>
-                    </td>
-                    <td>
+                <ul class="sidebar-menu list-group " >
+                    <li class="list-group-item">
+                        <a href="/upload" target="content">
+                            <i class="fa"></i>
+                            <span class="glyphicon glyphicon-plus-sign" aria-hidden="true" style="font-size:18px;color:#122b40;"></span>
+                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">封装镜像</span>
+                        </a>
+                    </li>
+                    <li class="list-group-item">
+                        <a href="/listimages" target="content">
+                            <i class="fa"></i>
+                            <span class="glyphicon glyphicon-modal-window" aria-hidden="true" style="font-size:18px;color:#122b40;"></span>
+                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">本地镜像</span>
+                        </a>
+                    </li>
+                    <li class="list-group-item">
+                        <a href="/registry" target="content">
+                            <i class="fa"></i>
+                            <span class="glyphicon glyphicon-home" aria-hidden="true"  style="font-size:18px;color:#122b40;"></span>
+                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">镜像仓库</span>
+                        </a>
+                    </li>
+                    <li class="list-group-item">
+                        <a href="/setting" target="content">
+                            <i class="fa"></i>
+                            <span class="glyphicon glyphicon-cog" aria-hidden="true"  style="font-size:18px;color:#122b40;"></span>
+                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">设置</span>
+                        </a>
+                    </li>
 
-                    </td>
-                </tr>
-            </table>
-        </div>
+                </ul>
+    <div class="kube">
+                 <a  href="{{ .k8s}}" target="_blank"><span class="glyphicon glyphicon-certificate">Kubernetes</span></a>
     </div>
+</div>
+<div class ="main" style="height:100%;width:100%;float: left; padding-top:10px;padding-left:10px;padding-right: 230px;margin-left: 220px;">
+<iframe name="content" frameborder="no" border="0" style="height:100%;width:100%;">
+
+</iframe>
 </div>
 </body>
 </html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <script type="text/javascript"
+            src="/static/bootstrap/js/jquery-2.2.1.min.js"></script>
+    <link rel="stylesheet"
+          href="/static/bootstrap/css/bootstrap.min.css">
+    <script type="text/javascript"
+            src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <title>封装</title>
+</head>
+<style type="text/css">
+    html,body {
+        background-color: white;
+        font-family: 微软雅黑;
+    }
+    h4{
+        margin: 0px;
+    }
+
+    table{
+        width:100%;
+        font-family: 微软雅黑;
+        font-size:16px;
+    }
+    p{
+        margin: 0px;
+        font-size: 10px;
+    }
+
+</style>
+<script type="text/javascript">
+    $(function() {
+
+        $.post("/registry", function (result) {
+            result=result.Images;
+            $.each(result, function (index, element) {
+
+                $.each(element.Tags, function (index, e) {
+                    number=index+1;
+                    var optionStr = "<tr><td style='width:80px;text-align: center;vertical-align:middle;'>"+number+
+                        "</td><td style='text-align: left;vertical-align:middle;'>" + element.Name +":"+e+
+                        "</td><td style='width:60px;'>" +
+                        "<button  class='btn btn-info' style='margin-left: 5px;'><span class='glyphicon glyphicon-arrow-down'></span></button></td></tr>";
+                    $("#registry").append(optionStr)
+
+                });
+
+            });
+        }, "json");
+
+    });
+</script>
+<body>
+<div class="container-fluid">
+    <div class="row">
+
+            <div class="panel panel-primary">
+                <div class="panel-heading"><h4>Registry </h4><p>{{ .url}}</p></div>
+                <table class="table table-hover table-condensed table-striped" id="registry">
+
+                </table>
+            </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <script type="text/javascript"
+            src="/static/bootstrap/js/jquery-2.2.1.min.js"></script>
+    <link rel="stylesheet"
+          href="/static/bootstrap/css/bootstrap.min.css">
+    <script type="text/javascript"
+            src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <title>封装</title>
+</head>
+<style type="text/css">
+    html,body {
+        background-color: white;
+        font-family: 微软雅黑;
+        width: 100%;
+    }
+
+    h4{
+        margin: 2px;
+    }
+
+    table{
+        width:100%;
+        font-family: 微软雅黑;
+        font-size:16px;
+    }
+
+</style>
+<script type="text/javascript">
+    var images;
+    var imageindex;
+    $(function() {
+
+        $.post("/localimage/list", function (result) {
+            images=result;
+            $.each(result, function (index, element) {
+                number=index+1;
+                var optionStr = "<tr><td style='width:80px;text-align: center;vertical-align:middle;'>"+number+
+                    "</td><td style='text-align: left;vertical-align:middle;'>" + element.RepoTags[0] +
+                    "</td><td style='width:100px;'><button  class='btn btn-danger'><span class='glyphicon glyphicon-remove'></span></button>" +
+                    "<button  class='btn btn-info' style='margin-left: 5px;' onclick='prePush("+index+")'><span class='glyphicon glyphicon-arrow-up'></span></button></td></tr>";
+                $("#localimage").append(optionStr)
+            });
+        }, "json");
+
+    });
+
+    function prePush(index){
+        imageindex=index;
+        $("#dialogBody").empty();
+        var optionStr ="<p>确定要将<font color='red'>"+images[imageindex].RepoTags[0]+"</font>推送到镜像仓库吗?</p>";
+        $("#dialogBody").append(optionStr);
+        $('#dialog').modal('show');
+    }
+
+    function pushImage(){
+        $('#dialog').modal('hide');
+        $("#waitDialogBody").empty();
+        var optionStr ="<p>推送中……</p>";
+        $("#waitDialogBody").append(optionStr);
+        $('#waitDialog').modal('show');
+        $.post("/registry/imagepush",{
+            imagename : images[imageindex].RepoTags[0]
+        }, function (result){
+            if(result.Success){
+                setTimeout(function () {
+                    $("#waitDialogBody").empty();
+                    var optionStr = "<p>推送成功</p>";
+                    $("#waitDialogBody").append(optionStr);
+                },2000);
+            }else{
+                setTimeout(function () {$("#waitDialogBody").empty();
+                var optionStr ="<p>推送失败,"+result.Reason+"</p>";
+                $("#waitDialogBody").append(optionStr);
+                },2000);
+            }
+            $('#waitDialog').modal('hide');
+
+        });
+    }
+
+</script>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <div class="panel panel-primary">
+            <div class="panel-heading"><h4>Local Image</h4></div>
+            <table class="table table-hover table-condensed table-striped" id="localimage">
+
+            </table>
+        </div>
+    </div>
+</div>
+<div class="modal fade" tabindex="-1" role="dialog" id="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">系统提示</h4>
+            </div>
+            <div class="modal-body" id="dialogBody">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="pushImage()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+    <div class="modal fade " tabindex="-1" role="dialog" id="waitDialog">
+        <div class="modal-dialog modal-sm" role="document" >
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                    <h4 class="modal-title" id="mySmallModalLabel">系统提示</h4>
+                </div>
+                <div class="modal-body" id="waitDialogBody">
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div>
+</body>
+</html>
