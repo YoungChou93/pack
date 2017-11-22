@@ -30,72 +30,125 @@
 
 </style>
 <script type="text/javascript">
+    var url;
+    var map;
+
+    function setRegistry() {
+        url="/setting/registry";
+        map={
+            ipaddr: $("#rip").val(),
+            port:$("#rport").val(),
+            version:$("#rversion").val(),
+        };
+        execute();
+    }
+
+    function setK8sui() {
+        url="/setting/k8sui";
+        map={
+            ipaddr: $("#kip").val(),
+            port:$("#kport").val(),
+            route:$("#kroute").val()
+        };
+        execute();
+    }
+
+    function execute() {
+        $.post(url,map, function (result) {
+            if(result.Success){
+                $("#waitDialogBody").empty();
+                var optionStr = "<p>成功</p>";
+                $("#waitDialogBody").append(optionStr);
+            }else{
+                $("#waitDialogBody").empty();
+                var optionStr ="<p>失败,"+result.Reason+"</p>";
+                $("#waitDialogBody").append(optionStr);
+            }
+            $('#waitDialog').modal('show');
+            setTimeout(function () {
+                $('#waitDialog').modal('hide');
+            },1000);
+        });
+    }
+
+
+
+
+
 </script>
 <body>
 <div class="container-fluid">
     <div class="row">
         <div class="panel panel-danger">
             <div class="panel-heading"><h4>镜像仓库</h4></div>
-            <form action="/upload" method="post"  enctype="multipart/form-data">
-            <table class=" table-hover table-condensed text-center">
+            <table class="  table-condensed text-center">
                 <tr>
                     <td class="td1">
                         <label class="h4">IP地址：</label>
                     </td>
                     <td>
-                        <input type="text" class="form-control" name="ipaddr" value="{{ .registry.Ipaddr}}"/>
+                        <input type="text" class="form-control" name="ipaddr" value="{{ .registry.Ipaddr}}" id="rip"/>
                     </td>
                     <td class="td1">
                         <label class="h4">端口：</label>
                     </td>
                     <td>
-                        <input type="text" class="form-control" name="port" value="{{ .registry.Port}}"/>
+                        <input type="text" class="form-control" name="port" value="{{ .registry.Port}}" id="rport"/>
                     </td>
                     <td class="td1">
                         <label class="h4">版本：</label>
                     </td>
                     <td>
-                        <input type="text" class="form-control" name="port" value="{{ .registry.Version}}"/>
+                        <input type="text" class="form-control" name="port" value="{{ .registry.Version}}" id="rversion"/>
                     </td>
                     <td>
-                        <button type="submit" class="btn btn-primary">确定</button>
+                        <button type="submit" class="btn btn-primary" onclick="setRegistry()">确定</button>
                     </td>
                 </tr>
             </table>
-            </form>
     </div>
         <div class="panel panel-info">
             <div class="panel-heading"><h4>Kubernetes</h4></div>
-            <form action="/upload" method="post"  enctype="multipart/form-data">
-                <table class=" table-hover table-condensed text-center">
+                <table class=" table-condensed text-center">
                     <tr>
                         <td class="td1">
                             <label class="h4">IP地址：</label>
                         </td>
                         <td>
-                            <input type="text" class="form-control" name="ipaddr" value="{{ .k8sui.Ipaddr}}"/>
+                            <input type="text" class="form-control" name="ipaddr" value="{{ .k8sui.Ipaddr}}" id="kip"/>
                         </td>
                         <td class="td1">
                             <label class="h4">端口：</label>
                         </td>
                         <td>
-                            <input type="text" class="form-control" name="port" value="{{ .k8sui.Port}}"/>
+                            <input type="text" class="form-control" name="port" value="{{ .k8sui.Port}}" id="kport"/>
                         </td>
                         <td class="td1">
                             <label class="h4">路径：</label>
                         </td>
                         <td>
-                            <input type="text" class="form-control" name="port" value="{{ .k8sui.Route}}"/>
+                            <input type="text" class="form-control" name="port" value="{{ .k8sui.Route}}" id="kroute"/>
                         </td>
                         <td>
-                            <button type="submit" class="btn btn-primary">确定</button>
+                            <button type="submit" class="btn btn-primary" onclick="setK8sui()">确定</button>
                         </td>
                     </tr>
                 </table>
-            </form>
         </div>
 
     </div>
+</div>
+<div class="modal fade " tabindex="-1" role="dialog" id="waitDialog">
+    <div class="modal-dialog modal-sm" role="document" >
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h4 class="modal-title" id="mySmallModalLabel">系统提示</h4>
+            </div>
+            <div class="modal-body" id="waitDialogBody">
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
 </div>
 </body>
 </html>

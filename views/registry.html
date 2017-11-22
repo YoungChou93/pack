@@ -31,18 +31,23 @@
 
 </style>
 <script type="text/javascript">
+    var array=new Array();
+    var number=0;
+    var url;
+    var map;
     $(function() {
-
         $.post("/registry", function (result) {
             result=result.Images;
             $.each(result, function (index, element) {
 
                 $.each(element.Tags, function (index, e) {
-                    number=index+1;
+                    number++;
+                    imagename= element.Name +":"+e;
+                    array[number-1]=imagename;
                     var optionStr = "<tr><td style='width:80px;text-align: center;vertical-align:middle;'>"+number+
-                        "</td><td style='text-align: left;vertical-align:middle;'>" + element.Name +":"+e+
+                        "</td><td style='text-align: left;vertical-align:middle;'>" +imagename+
                         "</td><td style='width:60px;'>" +
-                        "<button  class='btn btn-info' style='margin-left: 5px;'><span class='glyphicon glyphicon-arrow-down'></span></button></td></tr>";
+                        "<button  class='btn btn-info' style='margin-left: 5px;' onclick='prePull("+number+")'><span class='glyphicon glyphicon-arrow-down'></span></button></td></tr>";
                     $("#registry").append(optionStr)
 
                 });
@@ -51,6 +56,42 @@
         }, "json");
 
     });
+
+    function prePull(index){
+        $("#dialogBody").empty();
+        var optionStr ="<p>确定要拉取<font color='red'>"+array[index-1]+"</font>吗?</p>";
+        $("#dialogBody").append(optionStr);
+        $('#dialog').modal('show');
+        url="/registry/imagepull";
+        map={
+            imagename : array[index-1]
+        };
+    }
+
+    function execute(){
+        $('#dialog').modal('hide');
+        $("#waitDialogBody").empty();
+        var optionStr ="<p>等待中……</p>";
+        $("#waitDialogBody").append(optionStr);
+        $('#waitDialog').modal('show');
+        $.post(url,map, function (result){
+            if(result.Success){
+                $("#waitDialogBody").empty();
+                var optionStr = "<p>成功</p>";
+                $("#waitDialogBody").append(optionStr);
+            }else{
+                $("#waitDialogBody").empty();
+                var optionStr ="<p>失败,"+result.Reason+"</p>";
+                $("#waitDialogBody").append(optionStr);
+            }
+            setTimeout(function () {
+                $('#waitDialog').modal('hide');
+            },1000);
+            list();
+        });
+    }
+
+
 </script>
 <body>
 <div class="container-fluid">
@@ -63,6 +104,35 @@
                 </table>
             </div>
     </div>
+</div>
+<div class="modal fade" tabindex="-1" role="dialog" id="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">系统提示</h4>
+            </div>
+            <div class="modal-body" id="dialogBody">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="execute()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade " tabindex="-1" role="dialog" id="waitDialog">
+    <div class="modal-dialog modal-sm" role="document" >
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h4 class="modal-title" id="mySmallModalLabel">系统提示</h4>
+            </div>
+            <div class="modal-body" id="waitDialogBody">
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
 </div>
 </body>
 </html>

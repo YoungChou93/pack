@@ -31,21 +31,29 @@
 <script type="text/javascript">
     var images;
     var imageindex;
+    var url;
+    var map;
     $(function() {
+        list();
+    });
 
+
+    function list() {
         $.post("/localimage/list", function (result) {
             images=result;
+            $("#localimage").empty();
             $.each(result, function (index, element) {
                 number=index+1;
                 var optionStr = "<tr><td style='width:80px;text-align: center;vertical-align:middle;'>"+number+
                     "</td><td style='text-align: left;vertical-align:middle;'>" + element.RepoTags[0] +
-                    "</td><td style='width:100px;'><button  class='btn btn-danger'><span class='glyphicon glyphicon-remove'></span></button>" +
+                    "</td><td style='width:100px;'><button  class='btn btn-danger' onclick='preRemove("+index+")'><span class='glyphicon glyphicon-remove'></span></button>" +
                     "<button  class='btn btn-info' style='margin-left: 5px;' onclick='prePush("+index+")'><span class='glyphicon glyphicon-arrow-up'></span></button></td></tr>";
                 $("#localimage").append(optionStr)
             });
         }, "json");
+    }
 
-    });
+
 
     function prePush(index){
         imageindex=index;
@@ -53,33 +61,48 @@
         var optionStr ="<p>确定要将<font color='red'>"+images[imageindex].RepoTags[0]+"</font>推送到镜像仓库吗?</p>";
         $("#dialogBody").append(optionStr);
         $('#dialog').modal('show');
+        url="/registry/imagepush";
+        map={
+            imagename : images[imageindex].RepoTags[0]
+        };
     }
 
-    function pushImage(){
+    function preRemove(index){
+        imageindex=index;
+        $("#dialogBody").empty();
+        var optionStr ="<p>确定要将<font color='red'>"+images[imageindex].RepoTags[0]+"</font>删除吗?</p>";
+        $("#dialogBody").append(optionStr);
+        $('#dialog').modal('show');
+        url="/localimage/remove";
+        map={
+            imageid : images[imageindex].Id
+        };
+    }
+
+    function execute(){
         $('#dialog').modal('hide');
         $("#waitDialogBody").empty();
-        var optionStr ="<p>推送中……</p>";
+        var optionStr ="<p>等待中……</p>";
         $("#waitDialogBody").append(optionStr);
         $('#waitDialog').modal('show');
-        $.post("/registry/imagepush",{
-            imagename : images[imageindex].RepoTags[0]
-        }, function (result){
+        $.post(url,map, function (result){
             if(result.Success){
-                setTimeout(function () {
-                    $("#waitDialogBody").empty();
-                    var optionStr = "<p>推送成功</p>";
-                    $("#waitDialogBody").append(optionStr);
-                },2000);
-            }else{
-                setTimeout(function () {$("#waitDialogBody").empty();
-                var optionStr ="<p>推送失败,"+result.Reason+"</p>";
+                $("#waitDialogBody").empty();
+                var optionStr = "<p>成功</p>";
                 $("#waitDialogBody").append(optionStr);
-                },2000);
+            }else{
+                $("#waitDialogBody").empty();
+                var optionStr ="<p>失败,"+result.Reason+"</p>";
+                $("#waitDialogBody").append(optionStr);
             }
+            setTimeout(function () {
             $('#waitDialog').modal('hide');
-
+            },1000);
+            list();
         });
     }
+
+
 
 </script>
 <body>
@@ -103,7 +126,7 @@
             <div class="modal-body" id="dialogBody">
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="pushImage()">确定</button>
+                <button type="button" class="btn btn-primary" onclick="execute()">确定</button>
                 <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
             </div>
         </div><!-- /.modal-content -->
