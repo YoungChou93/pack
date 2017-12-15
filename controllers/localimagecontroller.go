@@ -41,7 +41,7 @@ func (c *ListImageController) Remove() {
 		panic(err)
 	}
 
-	response, err := cli.ImageRemove(context.Background(), imageid, types.ImageRemoveOptions{Force:true})
+	response, err := cli.ImageRemove(context.Background(), imageid, types.ImageRemoveOptions{Force:true,PruneChildren:true})
 
 	println(response)
 

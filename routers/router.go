@@ -8,6 +8,8 @@ import (
 func init() {
 	beego.Router("/", &controllers.IndexController{})
     beego.Router("/upload", &controllers.UploadController{})
+	beego.Router("/encapsulationview", &controllers.UploadController{},"get:EncapsulationView")
+	beego.Router("/encapsulation", &controllers.UploadController{},"Post:Encapsulation")
 	beego.Router("/localimage", &controllers.ListImageController{})
 	beego.Router("/localimage/list", &controllers.ListImageController{},"post:List")
 	beego.Router("/localimage/remove", &controllers.ListImageController{},"post:Remove")

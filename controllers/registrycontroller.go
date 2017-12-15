@@ -128,7 +128,7 @@ func (c *RegistryController) Pull() {
 
 	out, err := cli.ImagePull(ctx, imagename, types.ImagePullOptions{})
 
-	//defer out.Close()
+	defer out.Close()
 
 	io.Copy(os.Stdout, out)
 	if err != nil {

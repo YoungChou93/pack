@@ -44,6 +44,10 @@
             $("#localimage").empty();
             $.each(result, function (index, element) {
                 number=index+1;
+                if(element.RepoTags==null){
+                    element.RepoTags=new Array();
+                    element.RepoTags[0]="null";
+                }
                 var optionStr = "<tr><td style='width:80px;text-align: center;vertical-align:middle;'>"+number+
                     "</td><td style='text-align: left;vertical-align:middle;'>" + element.RepoTags[0] +
                     "</td><td style='width:100px;'><button  class='btn btn-danger' onclick='preRemove("+index+")'><span class='glyphicon glyphicon-remove'></span></button>" +
@@ -90,14 +94,14 @@
                 $("#waitDialogBody").empty();
                 var optionStr = "<p>成功</p>";
                 $("#waitDialogBody").append(optionStr);
+                setTimeout(function () {
+                    $('#waitDialog').modal('hide');
+                },1000);
             }else{
                 $("#waitDialogBody").empty();
                 var optionStr ="<p>失败,"+result.Reason+"</p>";
                 $("#waitDialogBody").append(optionStr);
             }
-            setTimeout(function () {
-            $('#waitDialog').modal('hide');
-            },1000);
             list();
         });
     }
