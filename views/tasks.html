@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <script type="text/javascript"
+            src="/static/bootstrap/js/jquery-2.2.1.min.js"></script>
+    <link rel="stylesheet"
+          href="/static/bootstrap/css/bootstrap.min.css">
+    <script type="text/javascript"
+            src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <title>封装</title>
+</head>
+<style type="text/css">
+    html,body {
+        background-color: white;
+        font-family: 微软雅黑;
+        width: 100%;
+    }
+
+    h4{
+        margin: 2px;
+    }
+
+    table{
+        width:100%;
+        font-family: 微软雅黑;
+        font-size:16px;
+    }
+    .td1{
+        text-align: right;
+        width:100px;
+    }
+    .td2{
+        text-align: center;
+        vertical-align:middle;
+    }
+
+</style>
+<script type="text/javascript">
+    var tasks;
+    var tasksindex;
+    var url;
+    var map;
+    $(function() {
+        $.extend({
+            StandardPost:function(url,args){
+                var form = $("#form"),
+                    input;
+                form.attr({"action":url});
+                $.each(args,function(key,value){
+                    input = $("<input type='hidden'>");
+                    input.attr({"name":key});
+                    input.val(value);
+                    form.append(input);
+                });
+                form.submit();
+            }
+        });
+        list();
+    });
+
+
+    function list() {
+        $.post("/simulation/listtask", function (result) {
+            tasks=result;
+            $("#tasks").empty();
+            if(tasks!=null && tasks.length>0) {
+                $("#tasks").append("<tr><td class='td2' style='80px'>序号</td><td class='td2'>名称</td><td class='td2' >创建时间</td><td class='td2' style='80px'>成员</td></tr>");
+            }
+            var number;
+            $.each(result, function (index, element) {
+                number=index+1;
+                var optionStr = "<tr><td class='td2' style='80px'>"+number+
+                    "</td><td class='td2' style='80px'>" + element.Name +
+                    "</td><td class='td2' >" + element.Time +
+                    "</td><td class='td2' style='80px'>" + element.Members.length +
+                    "</td><td style='width:100px;'>" +
+                    "<button  class='btn btn-danger' onclick='preRemove("+index+")'><span class='glyphicon glyphicon-remove'></span>"+
+                    "<button  class='btn btn-info' style='margin-left: 5px;' onclick='enter("+index+")'>" +
+                    "<span class='glyphicon glyphicon-chevron-right'></span></button></td></tr>";
+                $("#tasks").append(optionStr)
+            });
+        }, "json");
+    }
+
+    function addTask(){
+        $('#addDialog').modal('show');
+    }
+
+    function addexecute() {
+        $.post("/simulation/addtask", {name:$("#name").val()}, function (result) {
+            if(result.Success){
+                $("#name").val("");
+                $('#addDialog').modal('hide');
+                list();
+            }else{
+                alert("添加失败！"+result.Reason)
+            }
+        });
+    }
+
+
+
+
+    function enter(index){
+        $.StandardPost('/simulation/taskview',{namespace:tasks[index].Namespace,name:tasks[index].Name});
+    }
+
+    function preRemove(index){
+        tasksindex=index;
+        $("#dialogBody").empty();
+        var optionStr ="<p>确定要将<font color='red'>"+tasks[index].Name+"</font>删除吗?</p>";
+        $("#dialogBody").append(optionStr);
+        $('#dialog').modal('show');
+        url="/simulation/removetask";
+        map={
+            namespace : tasks[index].Namespace,
+            name : tasks[index].Name
+        };
+    }
+
+    function execute(){
+        $.post(url,map, function (result){
+            if(result.Success){
+                $('#dialog').modal('hide');
+            }else{
+                alert("失败"+result.Reason);
+            }
+            list();
+        });
+    }
+
+</script>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <div class="panel panel-primary">
+            <div class="panel-heading"><h4>任务<span class="glyphicon glyphicon-plus" onclick="addTask()" style="float:right"></span></h4> </div>
+            <table class="table table-hover table-condensed table-striped" id="tasks">
+
+            </table>
+        </div>
+    </div>
+</div>
+<div class="modal fade" tabindex="-1" role="dialog" id="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">系统提示</h4>
+            </div>
+            <div class="modal-body" id="dialogBody">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="execute()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade" tabindex="-1" role="dialog" id="addDialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">创建</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal">
+                    <table class=" table-hover table-condensed text-center">
+                        <tr>
+                            <td class="td1">
+                                <label class="h4">任务名称：</label>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control" id="name" name="name" placeholder="字母数字组合"/>
+                            </td>
+                        </tr>
+                    </table>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="addexecute()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<form method='post' style="display: none" id="form"></form>
+
+
+
+</body>
+</html>

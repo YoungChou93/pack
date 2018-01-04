@@ -1,13 +1,10 @@
 package entity
 
 import (
-	"flag"
+	"container/list"
+	"errors"
 	"github.com/astaxie/beego"
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-	"fmt"
 )
 
 //镜像仓库地址
@@ -59,109 +56,139 @@ type Result struct {
 	Reason  string
 }
 
-type DockerApp struct {
+type SimulationApp struct {
+	Name   string
+	Status string
+}
+
+type SimulationApps struct {
+	Apps []SimulationApp
+}
+
+type Task struct {
+	Name      string
+	Namespace string
+	Time      string
+	Members   []TaskMember
+}
+
+type TaskMember struct {
 	Name          string
-	UserName      string
+	Namespace     string
+	Types         int
 	Image         string
 	InstanceCount int32
+	Port          int32
+	TargetPort    int32
+	NodePort      int32
+	Env           []v1.EnvVar
+	Service       *v1.Service
+	Rc            *v1.ReplicationController
+	Pod           *v1.Pod
 }
 
+func (this *Task) AddTaskMember(member TaskMember) {
+	this.Members = append(this.Members, member)
+}
+
+func NewTask(name string, namespace string, time string) Task {
+	members := make([]TaskMember, 0)
+	return Task{Name: name, Namespace: namespace, Members: members, Time: time}
+}
+
+type Application struct {
+	taskMap map[string]*list.List
+	findMap map[string]*list.Element
+}
+
+func NewApplication() Application {
+	taskmap := make(map[string]*list.List)
+	findmap := make(map[string]*list.Element)
+	return Application{taskMap: taskmap, findMap: findmap}
+}
+
+func (this *Application) AddTask(namespace string, task Task) error {
+	key := namespace + "#" + task.Name
+	if _, ok := this.findMap[key]; ok {
+		return errors.New("The task has already existed !")
+	} else {
+		var e *list.Element
+		if tasks, ok := this.taskMap[namespace]; ok {
+			e = tasks.PushBack(task)
+		} else {
+			tasks := list.New()
+			e = tasks.PushBack(task)
+			this.taskMap[namespace] = tasks
+		}
+		this.findMap[key] = e
+	}
+	return nil
+}
+
+func (this *Application) RemoveTask(namespace string, name string)( Task,error) {
+	key := namespace + "#" + name
+	if e, ok := this.findMap[key]; ok {
+		delete(this.findMap, key)
+		if tasks, ok := this.taskMap[namespace]; ok {
+			task := e.Value.(Task)
+			tasks.Remove(e)
+			return task,nil
+		} else {
+			return Task{},errors.New("error namespace")
+		}
+	} else {
+		return Task{},errors.New("error name")
+	}
+
+}
+
+func (this *Application) GetTasks(namespace string) ([]Task, error) {
+	if tasks, ok := this.taskMap[namespace]; ok {
+		return this.ListToTasks(tasks), nil
+	} else {
+		return nil, errors.New("Namespace does not exist")
+	}
+}
+
+func (this *Application) ListToTasks(list *list.List) []Task {
+	i := 0
+	tasks := make([]Task, list.Len())
+	for e := list.Front(); e != nil; e = e.Next() {
+		tasks[i] = e.Value.(Task)
+		i++
+	}
+	return tasks
+}
+
+func (this *Application) GetTask(namespace string, name string) Task {
+	key := namespace + "#" + name
+	if e, ok := this.findMap[key]; ok {
+		task := e.Value.(Task)
+		return task
+	}
+	return Task{}
+}
+
+func (this *Application) ModifyTask(task Task) error {
+	key := task.Namespace + "#" + task.Name
+	if e, ok := this.findMap[key]; ok {
+		if tasks, ok := this.taskMap[task.Namespace]; ok {
+			tasks.Remove(e)
+			e = tasks.PushBack(task)
+		}
+		this.findMap[key] = e
+	} else {
+		return errors.New("task does not exist")
+	}
+	return nil
+}
+
+var App Application
 var Newregistry Registry
 var Newk8sui K8sui
-
-var K8sclient *kubernetes.Clientset
-
-/*func CreatePod(){
-pod:=new(v1.Pod)
-pod.TypeMeta=metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"}
-pod.ObjectMeta=metav1.ObjectMeta{Name: app.Name, Namespace: app.UserName, Labels: map[string]string{"name": app.Name}}
-pod.Spec=v1.PodSpec{
-	RestartPolicy: v1.RestartPolicyAlways,
-	Containers: []v1.Container{
-		v1.Container{
-			Name:  app.Name,
-			Image: app.Image,
-			Ports: []v1.ContainerPort{
-				v1.ContainerPort{
-					ContainerPort: 9080,
-					Protocol:      v1.ProtocolTCP,
-				},
-			},
-*/ /*Resources: v1.ResourceRequirements{
-	Requests: v1.ResourceList{
-		v1.ResourceCPU:    resource.MustParse(app.Cpu),
-		v1.ResourceMemory: resource.MustParse(app.Memory),
-	},
-},*/ /*
-			},
-		},
-	}
-
-}*/
-
-func CreateReplicationController(app DockerApp) {
-	rc := new(v1.ReplicationController)
-
-	rcTypeMeta := metav1.TypeMeta{Kind: "ReplicationController", APIVersion: "v1"}
-	rc.TypeMeta = rcTypeMeta
-
-	rcObjectMeta := metav1.ObjectMeta{Name: app.Name, Namespace: app.UserName, Labels: map[string]string{"name": app.Name}}
-	rc.ObjectMeta = rcObjectMeta
-
-	rcSpec := v1.ReplicationControllerSpec{
-		Replicas: &app.InstanceCount,
-		Selector: map[string]string{
-			"name": app.Name,
-		},
-		Template: &v1.PodTemplateSpec{
-			metav1.ObjectMeta{
-				Name:      app.Name,
-				Namespace: app.UserName,
-				Labels: map[string]string{
-					"name": app.Name,
-				},
-			},
-			v1.PodSpec{
-				RestartPolicy: v1.RestartPolicyAlways,
-				Containers: []v1.Container{
-					v1.Container{
-						Name:  app.Name,
-						Image: app.Image,
-						Ports: []v1.ContainerPort{
-							v1.ContainerPort{
-								ContainerPort: 9080,
-								Protocol:      v1.ProtocolTCP,
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	rc.Spec = rcSpec
-	result, err :=K8sclient.CoreV1().ReplicationControllers(app.UserName).Create(rc)
-	if err !=nil{
-		fmt.Println(err.Error())
-	}
-	fmt.Println(result.Name)
-
-}
 
 func Setting() {
 	Newregistry = Registry{beego.AppConfig.String("registryip"), beego.AppConfig.String("registryport"), beego.AppConfig.String("registryversion")}
 	Newk8sui = K8sui{beego.AppConfig.String("k8sip"), beego.AppConfig.String("k8sport"), beego.AppConfig.String("k8sroute")}
-
-	kubeconfig := flag.String("kubeconfig", "./config", "absolute path to the kubeconfig file")
-	flag.Parse()
-
-	config, err := clientcmd.BuildConfigFromFlags(Newk8sui.GetIpPort(), *kubeconfig)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	K8sclient, err = kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-
+	App = NewApplication()
 }

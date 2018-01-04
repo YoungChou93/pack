@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"github.com/YoungChou93/pack/util"
 )
 
 type UploadController struct {
@@ -64,13 +63,13 @@ func (c *UploadController) Encapsulation() {
 		f.Close()
 
 
-		if strings.Contains(header.Filename, ".tar") {
+		/*if strings.Contains(header.Filename, ".tar") {
 			err := util.Untar(dirpath+delimiter+header.Filename, dirpath+delimiter)
 			if err != nil {
 				fmt.Println(err.Error())
 				c.Abort("fail")
 			}
-		}
+		}*/
 
 	}
 
@@ -112,14 +111,16 @@ func (c *UploadController) Encapsulation() {
 		ForceRemove:    true,
 		Tags:           []string{imagename + ":" + version}}
 	buildResponse, err := cli.ImageBuild(context.Background(), dockerBuildContext, options)
-	defer buildResponse.Body.Close()
+	//defer buildResponse.Body.Close()
 	if err != nil {
 		fmt.Printf("%s", err.Error())
 	}
+	fmt.Printf("********* %s **********", buildResponse.OSType)
 	response, err := ioutil.ReadAll(buildResponse.Body)
 	if err != nil {
 		fmt.Printf("%s", err.Error())
 	}
+	fmt.Println(string(response))
 	result:=string(response)
 	if(strings.Contains(result,"error")){
 		c.Data["content"] = "FAIL"

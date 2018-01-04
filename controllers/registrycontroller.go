@@ -27,7 +27,7 @@ func (c *RegistryController) Get() {
 
 }
 
-func (c *RegistryController) Post() {
+func (c *RegistryController) List() {
 	var resp *http.Response
 	var err error
 	var body []byte
@@ -88,6 +88,10 @@ func (c *RegistryController) Push() {
 	}
 
 	cli.ImageTag(ctx, imagename, newTag)
+
+	defer func() {
+		cli.ImageTag(ctx, newTag,imagename)
+	}()
 
 	auth := types.AuthConfig{
 		Username: "docker",

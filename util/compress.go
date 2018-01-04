@@ -32,7 +32,7 @@ func Untar(source string,targetdir string)error{
 		target := path.Join(targetdir, header.Name)
 		switch header.Typeflag {
 		case tar.TypeDir:
-			err = os.MkdirAll(target, os.FileMode(header.Mode))
+			err = os.MkdirAll(target, 0755)
 			if err != nil {
 				return err
 			}
@@ -53,8 +53,16 @@ func Untar(source string,targetdir string)error{
 
 			setAttrs(target, header)
 			break
-
+		case tar.TypeLink:
+			os.Link(header.Linkname,target)
+			setAttrs(target, header)
+			break
+		case tar.TypeSymlink:
+			os.Symlink(header.Linkname,target)
+			setAttrs(target, header)
+			break
 		default:
+
 			break
 		}
 	}

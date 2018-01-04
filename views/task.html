@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <script type="text/javascript"
+            src="/static/bootstrap/js/jquery-2.2.1.min.js"></script>
+    <link rel="stylesheet"
+          href="/static/bootstrap/css/bootstrap.min.css">
+    <script type="text/javascript"
+            src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <title>封装</title>
+</head>
+<style type="text/css">
+    html,body {
+        background-color: white;
+        font-family: 微软雅黑;
+    }
+    h4{
+        margin: 2px;
+    }
+
+    table{
+        width:100%;
+        font-family: 微软雅黑;
+        font-size:16px;
+    }
+
+    .td1{
+        text-align: right;
+        width:100px;
+    }
+
+</style>
+<script type="text/javascript">
+    var task={{ .task}};
+
+    var envarray=[];
+
+    $(function() {
+        list();
+        $.post("/localimage/list", function (result) {
+            $.each(result, function (index, element) {
+                if(element.RepoTags!=null){
+                    var optionStr = "<option>" + element.RepoTags[0] + "</option>";
+                    $("#image").append(optionStr)
+                }
+            });
+        }, "json");
+
+
+        $("#port").show();
+        $("#env").hide();
+        $("#env2").hide();
+
+
+        $("#type").change(function(){
+            if($("#type").val()==3){
+                $("#ports").hide();
+                $("#env").show();
+                $("#env2").show();
+            }else if($("#type").val()==2){
+                $("#ports").show();
+                $("#env").show();
+                $("#env2").show();
+            }else{
+                $("#ports").show();
+                $("#env").hide();
+                $("#env2").hide();
+            }
+        });
+
+    });
+
+    function envObject(name,value) {
+        this.name=name;
+        this.value=value;
+
+    }
+
+    function addEnv(){
+        var env=$("#nameenv").val()+":"+$("#valueenv").val();
+        var object=new envObject($("#nameenv").val(),$("#valueenv").val());
+        envarray.push(object);
+        $("#nameenv").val("");
+        $("#valueenv").val("");
+        $("#envs").val($("#envs").val()+env+"\n");
+
+
+    }
+
+
+    function list() {
+        $.post("/simulation/onetask", {
+            name:task.Name,
+            namespace:task.Namespace,
+        },function (result) {
+            if (result != null) {
+            task = result;
+            var number = 1;
+            $("#apps").empty();
+            $.each(result.Members, function (index, element) {
+                var optionStr = "<tr><td style='width:80px;text-align: center;vertical-align:middle;'>" + number +
+                    "</td><td style='width:80px;text-align: center;vertical-align:middle;'>" + element.Name +
+                    "</td><td style='width:120px;text-align: center;vertical-align:middle;'>" + formatService(element)+
+                    "</td><td style='width:80px;text-align: center;vertical-align:middle;'>" + element.Port+
+                    "</td><td style='text-align: center;vertical-align:middle;'>" + element.Pod.status.phase+
+                    "</td><td style='width:100px;'><button  class='btn btn-info' onclick='getLog("+index+")'><span class='glyphicon glyphicon-list-alt'></span></button>"+
+                    "<button  class='btn btn-danger'  style='margin-left: 5px;' onclick='preRemove("+index+")'><span class='glyphicon glyphicon-remove'></span></button>"+
+                "</td></tr>";
+                $("#apps").append(optionStr)
+                number++;
+            });
+            }
+        }, "json");
+    }
+
+    function formatService(element){
+        if(element.Service!=null) {
+            return element.Service.spec.clusterIP;
+        }else{
+            return "-";
+        }
+    }
+
+
+    var map;
+    var pods;
+
+
+    function execute() {
+        var type=$("#type").val();
+        map={
+            taskname:task.Name,
+            namespace:task.Namespace,
+            name:$("#name").val(),
+            image:$("#image").val(),
+            type:$("#type").val()
+        }
+        if($("#type").val()==3){
+            map.env=envarray;
+        }else if($("#type").val()==2){
+            map.port=$("#port").val();
+            map.nameenv=$("#nameenv").val();
+            map.valueenv=$("#valueenv").val() ;
+        }else{
+            map.port=$("#port").val();
+        }
+
+       /* if(map.port!=null && (map.port<30000 || map.port>32768)){
+            alert("端口范围为30000~32768");
+            return false;
+        }*/
+
+        $.post("/simulation/run", map,function (result) {
+            if(result.Success){
+                list();
+            }else{
+                alert("运行错误！"+result.Reason);
+            }
+            $('#dialog').modal('hide');
+
+        });
+    }
+
+    function getLog(index) {
+        $.post("/simulation/log", {name : task.Members[index].Pod.metadata.name},function (result) {
+            if(result.Success){
+                $('#logp').empty();
+                $('#logp').append(result.Reason);
+                $('#log').modal('show');
+            }
+
+        });
+
+    }
+
+    var suremap;
+    function preRemove(index) {
+        $("#suredialogBody").empty();
+        var optionStr ="<p>确定要将<font color='red'>"+task.Members[index].Name+"</font>删除吗?</p>";
+        $("#suredialogBody").append(optionStr);
+        $('#suredialog').modal('show');
+        suremap={name : task.Members[index].Name};
+    }
+
+    function sureExecute(){
+        $.post("/simulation/removemember", suremap,function (result) {
+            if(result.Success){
+                alert("删除成功！");
+            }else{
+                alert("删除失败！"+result.Reason);
+            }
+            $('#suredialog').modal('hide');
+            list();
+
+        });
+    }
+
+function addApp() {
+    envarray=[];
+    $("#name").val("");
+    $("#port").val("");
+    $("#nameenv").val("");
+    $("#valueenv").val("") ;
+    $("#envs").val("") ;
+
+    $('#dialog').modal('show');
+}
+
+</script>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <div class="panel panel-primary">
+            <div class="panel-heading"><h4>{{ .task.Name}}<span class="glyphicon glyphicon-plus" onclick="addApp()" style="float:right;margin-left: 10px;"></span>
+                <span class="glyphicon glyphicon-refresh" onclick="list()" style="float:right"></span></h4> </div>
+            <table class="table table-hover table-condensed table-striped" id="apps">
+
+            </table>
+
+    </div>
+    </div>
+</div>
+
+<div class="modal fade" tabindex="-1" role="dialog" id="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">启动</h4>
+            </div>
+            <div class="modal-body" id="dialogBody">
+                <form class="form-horizontal">
+                <table class=" table-hover table-condensed text-center">
+                    <tr>
+                        <td class="td1">
+                            <label class="h4">类型：</label>
+                        </td>
+                        <td>
+                            <select id="type" class="form-control" name="type">
+                                <option value="1">RTIG</option>
+                                <option value="2">初始成员</option>
+                                <option value="3">其他成员</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="td1">
+                            <label class="h4">名称：</label>
+                        </td>
+                        <td>
+                            <input type="text" class="form-control" id="name" name="name"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="td1">
+                            <label class="h4">镜像：</label>
+                        </td>
+                        <td>
+                            <select id="image" class="form-control" name="image">
+                            </select>
+                        </td>
+                    </tr>
+                    <tr id="ports">
+                        <td class="td1">
+                            <label class="h4">端口：</label>
+                        </td>
+                        <td>
+                            <input type="text" class="form-control" id="port"/>
+                        </td>
+                    </tr>
+                    <tr id="env">
+                        <td class="td1">
+                            <label class="h4">变量：</label>
+                        </td>
+                        <td>
+                            <input type="text" class="form-control" placeholder="Name" style="width: 50%;float: left;" id="nameenv"/>
+                            <input type="text" class="form-control" placeholder="Value" style="width: 50%" id="valueenv"/>
+                        </td>
+                        <td  style="width: 50px">
+                            <button  type="button" class='btn btn-default' onclick='addEnv()'><span class='glyphicon glyphicon-plus'></span></button>
+                        </td>
+                    </tr>
+                    <tr id="env2">
+                        <td class="td1">
+                        </td>
+                        <td>
+                            <textarea type="text" class="form-control" placeholder="name:value" id="envs" readonly style="height: 150px;"></textarea>
+                        </td>
+                    </tr>
+
+                </table>
+                </form>
+
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="execute()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade" tabindex="-1" role="dialog" id="log">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">日志</h4>
+            </div>
+            <div class="modal-body" style="background-color: black;max-height: 500px;overflow:auto;">
+                <p id="logp" style="color:white;white-space: pre;"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade" tabindex="-1" role="dialog" id="suredialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">系统提示</h4>
+            </div>
+            <div class="modal-body" id="suredialogBody">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="sureExecute()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+</body>
+</html>

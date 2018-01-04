@@ -36,7 +36,7 @@
     var url;
     var map;
     $(function() {
-        $.post("/registry", function (result) {
+        $.post("/registry/list", function (result) {
             result=result.Images;
             $.each(result, function (index, element) {
 
