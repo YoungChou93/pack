@@ -1,10 +1,8 @@
 package controllers
 
 import (
-	"github.com/YoungChou93/pack/client"
 	"github.com/astaxie/beego"
 	"github.com/YoungChou93/pack/entity"
-	"strings"
 	"time"
 	"k8s.io/api/core/v1"
 	"strconv"
@@ -37,18 +35,11 @@ func (c *SimulationController) OneTask() {
 	namespace := c.GetString("namespace")
 	name := c.GetString("name")
 
-	//取出task的同时更新信息
 	task:=entity.App.GetTask(namespace,name)
-	for index, member := range task.Members {
-		//更新pod信息
-		member.Pod = client.GetPod(member.Namespace, member.Name)
-		task.Members[index]=member
-	}
-	entity.App.ModifyTask(task)
+
 	c.Data["json"]=task
 	c.ServeJSON()
 }
-
 
 
 func (c *SimulationController) ListTask() {
@@ -57,7 +48,6 @@ func (c *SimulationController) ListTask() {
 	c.Data["json"] = &tasks
 	c.ServeJSON()
 }
-
 
 func (c *SimulationController) AddTask() {
 	name := c.GetString("name")
@@ -77,15 +67,7 @@ func (c *SimulationController) RemoveTask() {
 	namespace := c.GetString("namespace")
 	name := c.GetString("name")
 	result := entity.Result{Success:true}
-	task,err:=entity.App.RemoveTask(namespace,name)
-	for _, member := range task.Members {
-		if member.Service != nil {
-			client.RemoveService(member.Namespace, member.Name)
-		}
-		client.RemoveReplicationController(member.Namespace, member.Name)
-		client.RemovePod(member.Namespace, member.Name)
-	}
-
+	err:=entity.App.RemoveTask(namespace,name)
 	if err !=nil{
 		result.Success=false
 		result.Reason=err.Error()
@@ -123,7 +105,7 @@ func (c *SimulationController) Run() {
 	image := c.GetString("image")
 	types, _:= c.GetInt("type")
 	result := entity.Result{Success:true}
-	var err error
+
 	member:= entity.TaskMember{Name: name, Namespace: task.Namespace, Image: image, InstanceCount: 1, Types:types}
 	switch types {
 	case 1:
@@ -131,12 +113,6 @@ func (c *SimulationController) Run() {
 		member.Port=port
 		member.NodePort=port
 		member.TargetPort=60400
-		pod,_:=client.CreatePod(member)
-		rc,_:=client.CreateReplicationController(member,pod)
-		s,_:=client.CreateService(member)
-		member.Pod=pod
-		member.Rc=rc
-		member.Service=s
 
 	case 2:
 		port, _ := c.GetInt32("port")
@@ -144,59 +120,45 @@ func (c *SimulationController) Run() {
 		member.NodePort=port
 		member.TargetPort=22
 		member.Env=GetEnv(c)
-		pod,_:=client.CreatePod(member)
-		rc,_:=client.CreateReplicationController(member,pod)
-		s,_:=client.CreateService(member)
-		member.Pod=pod
-		member.Rc=rc
-		member.Service=s
 
 	case 3:
 		member.TargetPort=22
 		member.Env=GetEnv(c)
-		pod,_:=client.CreatePod(member)
-		rc,_:=client.CreateReplicationController(member,pod)
-		member.Pod=pod
-		member.Rc=rc
 	}
+	err:=entity.App.AddTaskMember(task, member)
+	if err !=nil{
+		result.Success=false
+		result.Reason=err.Error()
+	}else {
 
+	}
+	c.Data["json"] = &result
+	c.ServeJSON()
+}
+
+
+func (c *SimulationController) RemoveMember() {
+	name := c.GetString("name")
+	membername := c.GetString("membername")
+	namespace := c.GetString("namespace")
+
+	err:=entity.App.RemoveTaskMember(namespace,name,membername)
+
+	result := entity.Result{Success:true}
 	if err !=nil{
 		result.Success=false
 		result.Reason=err.Error()
 	}
-	task.AddTaskMember(member)
-    entity.App.ModifyTask(task)
 	c.Data["json"] = &result
 	c.ServeJSON()
 }
 
 func (c *SimulationController) GetLog() {
 	name := c.GetString("name")
-	logs:=client.ShowLogs(name)
+	namespace := c.GetString("namespace")
+	logs,_:=entity.App.GetLog(namespace,name)
 
 	result := entity.Result{Success:true,Reason:logs}
-	c.Data["json"] = &result
-	c.ServeJSON()
-}
-
-
-
-func (c *SimulationController) RemoveMember() {
-	name := c.GetString("name")
-	namespace := c.GetString("namespace")
-    var rcname string
-	if strings.Contains(name,"-"){
-		rcname=strings.Split(name,"-")[0]
-	}
-
-	result := entity.Result{Success:true}
-	err:=client.RemovePod(namespace,name)
-	err=client.RemoveReplicationController(namespace,rcname)
-	err=client.RemoveService(namespace,rcname)
-	if err !=nil{
-		result.Success=false
-		result.Reason=err.Error()
-	}
 	c.Data["json"] = &result
 	c.ServeJSON()
 }

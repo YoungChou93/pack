@@ -50,7 +50,7 @@ func (c *RegistryController) List() {
 
 	imageList := make([]entity.Image, 0)
 
-	registryimage := entity.ResgitryImage{Images: imageList}
+	registryimage := entity.RegistryImage{Images: imageList}
 
 	for _, name := range repositoriesInfo.Repositories {
 		resp, err = http.Get(entity.Newregistry.GetUrl() + "/" + name + "/tags/list")

@@ -163,7 +163,10 @@
     }
 
     function getLog(index) {
-        $.post("/simulation/log", {name : task.Members[index].Pod.metadata.name},function (result) {
+        $.post("/simulation/log", {
+            name : task.Members[index].Pod.metadata.name,
+            namespace : task.Namespace
+        },function (result) {
             if(result.Success){
                 $('#logp').empty();
                 $('#logp').append(result.Reason);
@@ -180,19 +183,21 @@
         var optionStr ="<p>确定要将<font color='red'>"+task.Members[index].Name+"</font>删除吗?</p>";
         $("#suredialogBody").append(optionStr);
         $('#suredialog').modal('show');
-        suremap={name : task.Members[index].Name};
+        suremap={
+            namespace : task.Namespace,
+            name : task.Name,
+            membername : task.Members[index].Name
+        };
     }
 
     function sureExecute(){
         $.post("/simulation/removemember", suremap,function (result) {
             if(result.Success){
-                alert("删除成功！");
+                $('#suredialog').modal('hide');
+                list();
             }else{
                 alert("删除失败！"+result.Reason);
             }
-            $('#suredialog').modal('hide');
-            list();
-
         });
     }
 

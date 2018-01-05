@@ -1,48 +1,31 @@
 package client
 
 import (
-	"flag"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 	"fmt"
-	"github.com/YoungChou93/pack/entity"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-var K8sclient *kubernetes.Clientset
 
-func ClientSetting() {
 
-	kubeconfig := flag.String("kubeconfig", "./config", "absolute path to the kubeconfig file")
-	flag.Parse()
-	config, err := clientcmd.BuildConfigFromFlags(entity.Newk8sui.GetIpPort(), *kubeconfig)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	K8sclient, err = kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
+type KubernetesClient struct {
+	K8sclient *kubernetes.Clientset
 }
-
-
 
 type K8sApp struct {
 	Name          string
-	UserName      string
+	Namespace      string
 	Image         string
 	InstanceCount int32
 	Port          int32
 	TargetPort    int32
 	NodePort      int32
-	NameENV       string
-	ValueENV       string
+	Env           []v1.EnvVar
 }
 
-func CreateService(app entity.TaskMember)( *v1.Service, error){
+func (this * KubernetesClient)CreateService(app K8sApp)( *v1.Service, error){
 
 	service := new(v1.Service)
 
@@ -67,7 +50,7 @@ func CreateService(app entity.TaskMember)( *v1.Service, error){
 	}
 	service.Spec = svServiceSpec
 
-	result, err := K8sclient.CoreV1().Services(app.Namespace).Create(service)
+	result, err := this.K8sclient.CoreV1().Services(app.Namespace).Create(service)
 	if err !=nil{
 		fmt.Println(err.Error())
 	}
@@ -77,7 +60,7 @@ func CreateService(app entity.TaskMember)( *v1.Service, error){
 }
 
 
-func CreateReplicationController(app entity.TaskMember,pod *v1.Pod) (*v1.ReplicationController,error){
+func (this * KubernetesClient)CreateReplicationController(app K8sApp,pod *v1.Pod) (*v1.ReplicationController,error){
 	rc := new(v1.ReplicationController)
 
 	rcTypeMeta := metav1.TypeMeta{Kind: "ReplicationController", APIVersion: "v1"}
@@ -104,7 +87,7 @@ func CreateReplicationController(app entity.TaskMember,pod *v1.Pod) (*v1.Replica
 		},
 	}
 	rc.Spec = rcSpec
-	result, err :=K8sclient.CoreV1().ReplicationControllers(app.Namespace).Create(rc)
+	result, err :=this.K8sclient.CoreV1().ReplicationControllers(app.Namespace).Create(rc)
 	if err !=nil{
 		fmt.Println(err.Error())
 	}
@@ -112,7 +95,7 @@ func CreateReplicationController(app entity.TaskMember,pod *v1.Pod) (*v1.Replica
 	return result,err
 }
 
-func CreatePod(app entity.TaskMember)(*v1.Pod,error){
+func (this * KubernetesClient)CreatePod(app K8sApp)(*v1.Pod,error){
 	container:=v1.Container{
 		Name:  app.Name,
 		Image: app.Image,
@@ -136,7 +119,7 @@ func CreatePod(app entity.TaskMember)(*v1.Pod,error){
 			container,
 		},
 	}
-	result, err := K8sclient.CoreV1().Pods(app.Namespace).Create(pod)
+	result, err := this.K8sclient.CoreV1().Pods(app.Namespace).Create(pod)
 	if err !=nil{
 		fmt.Println(err.Error())
 	}
@@ -145,26 +128,26 @@ func CreatePod(app entity.TaskMember)(*v1.Pod,error){
 }
 
 
-func RemoveReplicationController(namespace string,name string)error{
-	err :=K8sclient.CoreV1().ReplicationControllers(namespace).Delete(name,&metav1.DeleteOptions{})
+func (this * KubernetesClient)RemoveReplicationController(namespace string,name string)error{
+	err :=this.K8sclient.CoreV1().ReplicationControllers(namespace).Delete(name,&metav1.DeleteOptions{})
 	if err !=nil{
 		fmt.Println(err.Error())
 	}
 	return err
 }
 
-func RemovePod(namespace string,name string)error{
-	err :=K8sclient.CoreV1().Pods(namespace).Delete(name,&metav1.DeleteOptions{})
+func (this * KubernetesClient)RemovePod(namespace string,name string)error{
+	err :=this.K8sclient.CoreV1().Pods(namespace).Delete(name,&metav1.DeleteOptions{})
 	if err !=nil{
 		fmt.Println(err.Error())
 	}
 	return err
 }
 
-func RemoveService(namespace string,name string)error{
-	_,err:=K8sclient.CoreV1().Services(namespace).Get(name,metav1.GetOptions{})
+func (this * KubernetesClient)RemoveService(namespace string,name string)error{
+	_,err:=this.K8sclient.CoreV1().Services(namespace).Get(name,metav1.GetOptions{})
 	if err==nil {
-		err = K8sclient.CoreV1().Services(namespace).Delete(name, &metav1.DeleteOptions{})
+		err =this.K8sclient.CoreV1().Services(namespace).Delete(name, &metav1.DeleteOptions{})
 		if err != nil {
 			fmt.Println(err.Error())
 		}
@@ -174,51 +157,18 @@ func RemoveService(namespace string,name string)error{
 
 }
 
-func GetPod(namespace string,name string)*v1.Pod{
-	pod,_:=K8sclient.CoreV1().Pods(namespace).Get(name,metav1.GetOptions{})
-	return pod
+func (this * KubernetesClient)GetPod(namespace string,name string)(*v1.Pod,error){
+	pod,err:=this.K8sclient.CoreV1().Pods(namespace).Get(name,metav1.GetOptions{})
+	return pod,err
 
 }
 
-
-func ListReplicationController()[] entity.SimulationApp{
-	namespace := "default"
-	rcList, err:= K8sclient.CoreV1().ReplicationControllers(namespace).List(metav1.ListOptions{})
-	if err !=nil{
-		fmt.Println(err.Error())
-	}
-
-	apps:=make([]entity.SimulationApp,0)
-	for _,rc :=range rcList.Items{
-		app:=entity.SimulationApp{Name:rc.Name}
-		apps=append(apps, app)
-	}
-	return apps
-}
-
-func ListPod()[] entity.SimulationApp{
-	namespace := "default"
-	podList, err:= K8sclient.CoreV1().Pods(namespace).List(metav1.ListOptions{})
-	if err !=nil{
-		fmt.Println(err.Error())
-	}
-
-	apps:=make([]entity.SimulationApp,0)
-	for _,pod :=range podList.Items{
-		app:=entity.SimulationApp{Name:pod.Name,Status:string(pod.Status.Phase)}
-		apps=append(apps, app)
-	}
-	return apps
-}
-
-
-func ShowLogs(name string) string{
-	namespace := "default"
-	request:=K8sclient.CoreV1().Pods(namespace).GetLogs(name,&v1.PodLogOptions{})
+func (this * KubernetesClient)ShowLogs(namespace string,name string) (string,error){
+	request:=this.K8sclient.CoreV1().Pods(namespace).GetLogs(name,&v1.PodLogOptions{})
 	result:=request.Do()
 	body,err:=result.Raw()
 	if err !=nil{
 		fmt.Println(err.Error())
 	}
-	return string(body)
+	return string(body),err
 }

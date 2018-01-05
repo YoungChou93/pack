@@ -1,10 +1,13 @@
 package entity
 
 import (
-	"container/list"
 	"errors"
 	"github.com/astaxie/beego"
 	"k8s.io/api/core/v1"
+	"flag"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/kubernetes"
+	 "github.com/YoungChou93/pack/client"
 )
 
 //镜像仓库地址
@@ -47,29 +50,13 @@ type Image struct {
 	Tags []string
 }
 
-type ResgitryImage struct {
+type RegistryImage struct{
 	Images []Image
 }
 
 type Result struct {
 	Success bool
-	Reason  string
-}
-
-type SimulationApp struct {
-	Name   string
-	Status string
-}
-
-type SimulationApps struct {
-	Apps []SimulationApp
-}
-
-type Task struct {
-	Name      string
-	Namespace string
-	Time      string
-	Members   []TaskMember
+	Reason string
 }
 
 type TaskMember struct {
@@ -87,8 +74,22 @@ type TaskMember struct {
 	Pod           *v1.Pod
 }
 
-func (this *Task) AddTaskMember(member TaskMember) {
-	this.Members = append(this.Members, member)
+func (this *TaskMember) GetK8sApp()client.K8sApp {
+	 app:=client.K8sApp{Name:this.Name,Namespace:this.Namespace,
+	Image:this.Image,InstanceCount:this.InstanceCount,Port:this.Port,
+	TargetPort:this.TargetPort,NodePort:this.NodePort}
+	if len(this.Env)>0{
+		app.Env=this.Env
+	}
+	return app
+}
+
+
+type Task struct {
+	Name      string
+	Namespace string
+	Time      string
+	Members   []TaskMember
 }
 
 func NewTask(name string, namespace string, time string) Task {
@@ -96,99 +97,54 @@ func NewTask(name string, namespace string, time string) Task {
 	return Task{Name: name, Namespace: namespace, Members: members, Time: time}
 }
 
-type Application struct {
-	taskMap map[string]*list.List
-	findMap map[string]*list.Element
+func (this *Task) AddTaskMember(member TaskMember) {
+	this.Members = append(this.Members, member)
 }
 
-func NewApplication() Application {
-	taskmap := make(map[string]*list.List)
-	findmap := make(map[string]*list.Element)
-	return Application{taskMap: taskmap, findMap: findmap}
-}
-
-func (this *Application) AddTask(namespace string, task Task) error {
-	key := namespace + "#" + task.Name
-	if _, ok := this.findMap[key]; ok {
-		return errors.New("The task has already existed !")
-	} else {
-		var e *list.Element
-		if tasks, ok := this.taskMap[namespace]; ok {
-			e = tasks.PushBack(task)
-		} else {
-			tasks := list.New()
-			e = tasks.PushBack(task)
-			this.taskMap[namespace] = tasks
+func (this *Task) RemoveTaskMember(name string) (TaskMember,error){
+	index:=-1
+	for i,member:= range this.Members{
+		if member.Name==name{
+			index=i
 		}
-		this.findMap[key] = e
 	}
-	return nil
-}
-
-func (this *Application) RemoveTask(namespace string, name string)( Task,error) {
-	key := namespace + "#" + name
-	if e, ok := this.findMap[key]; ok {
-		delete(this.findMap, key)
-		if tasks, ok := this.taskMap[namespace]; ok {
-			task := e.Value.(Task)
-			tasks.Remove(e)
-			return task,nil
-		} else {
-			return Task{},errors.New("error namespace")
+	if index!=-1{
+		taskMember:=this.Members[index]
+		if len(this.Members)==1{
+			this.Members = make([]TaskMember, 0)
+		}else {
+			this.Members = append(this.Members[:index], this.Members[index+1:]...)
 		}
-	} else {
-		return Task{},errors.New("error name")
+		return taskMember,nil
 	}
-
+	return TaskMember{},errors.New("error name")
 }
 
-func (this *Application) GetTasks(namespace string) ([]Task, error) {
-	if tasks, ok := this.taskMap[namespace]; ok {
-		return this.ListToTasks(tasks), nil
-	} else {
-		return nil, errors.New("Namespace does not exist")
-	}
-}
 
-func (this *Application) ListToTasks(list *list.List) []Task {
-	i := 0
-	tasks := make([]Task, list.Len())
-	for e := list.Front(); e != nil; e = e.Next() {
-		tasks[i] = e.Value.(Task)
-		i++
-	}
-	return tasks
-}
 
-func (this *Application) GetTask(namespace string, name string) Task {
-	key := namespace + "#" + name
-	if e, ok := this.findMap[key]; ok {
-		task := e.Value.(Task)
-		return task
-	}
-	return Task{}
-}
-
-func (this *Application) ModifyTask(task Task) error {
-	key := task.Namespace + "#" + task.Name
-	if e, ok := this.findMap[key]; ok {
-		if tasks, ok := this.taskMap[task.Namespace]; ok {
-			tasks.Remove(e)
-			e = tasks.PushBack(task)
-		}
-		this.findMap[key] = e
-	} else {
-		return errors.New("task does not exist")
-	}
-	return nil
-}
 
 var App Application
 var Newregistry Registry
 var Newk8sui K8sui
 
 func Setting() {
+
 	Newregistry = Registry{beego.AppConfig.String("registryip"), beego.AppConfig.String("registryport"), beego.AppConfig.String("registryversion")}
 	Newk8sui = K8sui{beego.AppConfig.String("k8sip"), beego.AppConfig.String("k8sport"), beego.AppConfig.String("k8sroute")}
-	App = NewApplication()
+	kubeconfig := flag.String("kubeconfig", "./config", "absolute path to the kubeconfig file")
+	flag.Parse()
+	config, err := clientcmd.BuildConfigFromFlags(Newk8sui.GetIpPort(), *kubeconfig)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	K8sclient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	kclient:=client.KubernetesClient{K8sclient}
+
+	App = NewApplication(kclient)
+
 }
