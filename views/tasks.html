@@ -15,6 +15,7 @@
         background-color: white;
         font-family: 微软雅黑;
         width: 100%;
+        background-color: #bbccdd;
     }
 
     h4{
@@ -74,8 +75,9 @@
                     "</td><td class='td2' style='80px'>" + element.Name +
                     "</td><td class='td2' >" + element.Time +
                     "</td><td class='td2' style='80px'>" + element.Members.length +
-                    "</td><td style='width:100px;'>" +
-                    "<button  class='btn btn-danger' onclick='preRemove("+index+")'><span class='glyphicon glyphicon-remove'></span>"+
+                    "</td><td style='width:150px;'>" +
+                    "<button  class='btn btn-danger' onclick='preRemove("+index+")'><span class='glyphicon glyphicon-remove'></span></button>"+
+                    "<button  class='btn btn-info' onclick='preUpload("+index+")' style='margin-left: 5px;'><span class='glyphicon glyphicon-file'></span></button>"+
                     "<button  class='btn btn-info' style='margin-left: 5px;' onclick='enter("+index+")'>" +
                     "<span class='glyphicon glyphicon-chevron-right'></span></button></td></tr>";
                 $("#tasks").append(optionStr)
@@ -117,6 +119,38 @@
             namespace : tasks[index].Namespace,
             name : tasks[index].Name
         };
+    }
+
+    function preUpload(index) {
+        $('#fileDialog').modal('show');
+        tasksindex=index;
+    }
+
+    function uploadFile(){
+        var formData=new FormData($('#fileForm')[0]);
+        formData.append("namespace", tasks[tasksindex].Namespace);
+        formData.append("name", tasks[tasksindex].Name);
+        $.ajax({
+            url: "/simulation/uploadfile",
+            type: 'POST',
+            cache: false,
+            data:formData,
+            processData: false,
+            contentType: false,
+            dataType:"json",
+            beforeSend: function(){
+
+            },
+            success : function(data) {
+                if(data.Success){
+                    alert("上传成功！");
+                    $('#fileDialog').modal('hide');
+                }else{
+                    alert(data.Reason);
+                }
+
+            }
+        });
     }
 
     function execute(){
@@ -187,6 +221,36 @@
         </div><!-- /.modal-content -->
     </div><!-- /.modal-dialog -->
 </div><!-- /.modal -->
+
+<div class="modal fade" tabindex="-1" role="dialog" id="fileDialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">上传文件</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal" enctype="multipart/form-data" id="fileForm">
+                    <table class=" table-hover table-condensed text-center">
+                        <tr>
+                            <td class="td1">
+                                <label class="h4">fed文件：</label>
+                            </td>
+                            <td>
+                                <input type="file" class="form-control" id="file" name="fedfile" />
+                            </td>
+                        </tr>
+                    </table>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="uploadFile()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
 <form method='post' style="display: none" id="form"></form>
 
 

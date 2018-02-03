@@ -10,21 +10,6 @@ import (
 	 "github.com/YoungChou93/pack/client"
 )
 
-//镜像仓库地址
-type Registry struct {
-	Ipaddr  string
-	Port    string
-	Version string
-}
-
-func (this *Registry) GetUrl() string {
-	return "http://" + this.Ipaddr + ":" + this.Port + "/" + this.Version
-}
-
-func (this *Registry) GetIpPort() string {
-	return this.Ipaddr + ":" + this.Port
-}
-
 //k8sui地址
 type K8sui struct {
 	Ipaddr string
@@ -54,11 +39,13 @@ type RegistryImage struct{
 	Images []Image
 }
 
+
 type Result struct {
 	Success bool
 	Reason string
 }
 
+//仿真成员
 type TaskMember struct {
 	Name          string
 	Namespace     string
@@ -74,10 +61,10 @@ type TaskMember struct {
 	Pod           *v1.Pod
 }
 
-func (this *TaskMember) GetK8sApp()client.K8sApp {
-	 app:=client.K8sApp{Name:this.Name,Namespace:this.Namespace,
+func (this *TaskMember) GetK8sApp(taskname string)client.K8sApp {
+	 app:=client.K8sApp{TaskName:taskname,Name:this.Name,Namespace:this.Namespace,
 	Image:this.Image,InstanceCount:this.InstanceCount,Port:this.Port,
-	TargetPort:this.TargetPort,NodePort:this.NodePort}
+	TargetPort:this.TargetPort,NodePort:this.NodePort,Types:this.Types}
 	if len(this.Env)>0{
 		app.Env=this.Env
 	}
@@ -85,6 +72,7 @@ func (this *TaskMember) GetK8sApp()client.K8sApp {
 }
 
 
+//仿真任务
 type Task struct {
 	Name      string
 	Namespace string
@@ -124,12 +112,12 @@ func (this *Task) RemoveTaskMember(name string) (TaskMember,error){
 
 
 var App Application
-var Newregistry Registry
+
 var Newk8sui K8sui
 
 func Setting() {
 
-	Newregistry = Registry{beego.AppConfig.String("registryip"), beego.AppConfig.String("registryport"), beego.AppConfig.String("registryversion")}
+    client.RegistrySetting()
 	Newk8sui = K8sui{beego.AppConfig.String("k8sip"), beego.AppConfig.String("k8sport"), beego.AppConfig.String("k8sroute")}
 	kubeconfig := flag.String("kubeconfig", "./config", "absolute path to the kubeconfig file")
 	flag.Parse()

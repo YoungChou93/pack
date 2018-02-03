@@ -37,6 +37,7 @@
         .sidebar-menu > li {
             margin: 5px;
             padding: 0;
+
         }
         .sidebar-menu > li > a > .fa{
             width: 20px;
@@ -62,6 +63,14 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
+
+        /*.list-group-item.active, .list-group-item.active:focus, .list-group-item.active:hover {
+            z-index: 2;
+            color: #fff;
+            background-color: #63BDE8;
+            border-color: #63BDE8;
+        }*/
+
 
         .kube{
             width: 100%;
@@ -166,10 +175,10 @@
 
                 </ul>
     <div class="kube">
-                 <a  href="{{ .k8s}}" target="_blank"><span class="glyphicon glyphicon-certificate">Kubernetes</span></a>
+                 <!--<a  href="{{ .k8s}}" target="_blank"><span class="glyphicon glyphicon-certificate">Kubernetes</span></a>-->
     </div>
 </div>
-<div class ="main" style="height:100%;width:100%;float: left; padding-top:10px;padding-left:10px;padding-right: 230px;margin-left: 220px;">
+<div class ="main" style="height:100%;width:100%;float: left; padding-top:10px;padding-left:10px;padding-right: 230px;padding-bottom: 20px;margin-left: 220px;background-color: #bbccdd">
 <iframe name="content" frameborder="no" border="0" style="height:100%;width:100%;">
 
 </iframe>

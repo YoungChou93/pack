@@ -6,6 +6,11 @@ import (
 	"time"
 	"k8s.io/api/core/v1"
 	"strconv"
+	"os"
+	"fmt"
+	"io"
+	"strings"
+	"github.com/YoungChou93/pack/client"
 )
 
 var NAMESPACE string
@@ -106,23 +111,37 @@ func (c *SimulationController) Run() {
 	types, _:= c.GetInt("type")
 	result := entity.Result{Success:true}
 
+	if !strings.Contains(image,client.Newregistry.GetIpPort()){
+		image=client.Newregistry.GetIpPort()+"/"+image
+	}
+
 	member:= entity.TaskMember{Name: name, Namespace: task.Namespace, Image: image, InstanceCount: 1, Types:types}
 	switch types {
 	case 1:
 		port, _ := c.GetInt32("port")
 		member.Port=port
-		member.NodePort=port
 		member.TargetPort=60400
 
 	case 2:
 		port, _ := c.GetInt32("port")
 		member.Port=port
-		member.NodePort=port
-		member.TargetPort=22
-		member.Env=GetEnv(c)
+		member.TargetPort=4200
+		envs:=GetEnv(c)
+		envVar1:=v1.EnvVar{Name:"SIAB_PASSWORD",Value:"123456"}
+		envVar2:=v1.EnvVar{Name:"SIAB_SUDO",Value:"true"}
+		envs=append(envs,envVar1)
+		envs=append(envs,envVar2)
+		member.Env=envs
+
 
 	case 3:
 		member.TargetPort=22
+		member.Env=GetEnv(c)
+
+	case client.TYPE_VNC:
+		port, _ := c.GetInt32("port")
+		member.Port=port
+		member.TargetPort=6080
 		member.Env=GetEnv(c)
 	}
 	err:=entity.App.AddTaskMember(task, member)
@@ -161,4 +180,38 @@ func (c *SimulationController) GetLog() {
 	result := entity.Result{Success:true,Reason:logs}
 	c.Data["json"] = &result
 	c.ServeJSON()
+}
+
+func (c *SimulationController) UploadFile(){
+	file, header, _ := c.GetFile("fedfile")
+	name:= c.GetString("name")
+	namespace:= c.GetString("namespace")
+	nfspath := beego.AppConfig.String("nfspath")
+	result := entity.Result{Success:true}
+	task:=entity.App.GetTask(namespace,name)
+	if len(task.Name)>0 {
+		//保存待封装软件
+		dirpath := nfspath + "/"+task.Namespace+"/"+task.Name
+		os.MkdirAll(dirpath, os.ModePerm)
+		f, err := os.OpenFile(dirpath+"/"+header.Filename, os.O_CREATE|os.O_RDWR, 0777)
+		if err != nil {
+			fmt.Println("文件打开失败")
+			result.Reason=err.Error()
+
+		}
+		_, err = io.Copy(f, file)
+		if err != nil {
+			fmt.Println("文件保存失败" + err.Error())
+			result.Reason=err.Error()
+
+		}
+
+		f.Close()
+	}else{
+		result.Reason="任务不存在"
+	}
+	c.Data["json"] = &result
+	c.ServeJSON()
+
+
 }

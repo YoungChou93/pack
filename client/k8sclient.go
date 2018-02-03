@@ -6,23 +6,31 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"fmt"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"github.com/astaxie/beego"
 )
 
-
+const (
+	TYPE_RTIG  = 1
+	TYPE_FIRST_FED = 2
+	TYPE_OTHER_FED   = 3
+	TYPE_VNC=4
+)
 
 type KubernetesClient struct {
 	K8sclient *kubernetes.Clientset
 }
 
 type K8sApp struct {
+	TaskName      string
 	Name          string
-	Namespace      string
+	Namespace     string
 	Image         string
 	InstanceCount int32
 	Port          int32
 	TargetPort    int32
 	NodePort      int32
 	Env           []v1.EnvVar
+	Types         int
 }
 
 func (this * KubernetesClient)CreateService(app K8sApp)( *v1.Service, error){
@@ -95,30 +103,69 @@ func (this * KubernetesClient)CreateReplicationController(app K8sApp,pod *v1.Pod
 	return result,err
 }
 
-func (this * KubernetesClient)CreatePod(app K8sApp)(*v1.Pod,error){
+func (this * KubernetesClient)createcontainer(name,image string,targetport int32)(v1.Container){
 	container:=v1.Container{
-		Name:  app.Name,
-		Image: app.Image,
+		Name:  name,
+		Image: image,
 		Ports: []v1.ContainerPort{
 			v1.ContainerPort{
-				ContainerPort: app.TargetPort,
+				ContainerPort: targetport,
 				Protocol:      v1.ProtocolTCP,
 			},
 		},
+	}
+	return container
+}
 
-	}
-	if len(app.Env)>0{
-		container.Env=app.Env
-	}
+
+func (this * KubernetesClient)CreatePod(app K8sApp)(*v1.Pod,error){
+
 	pod:=new(v1.Pod)
 	pod.TypeMeta=metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"}
 	pod.ObjectMeta=metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace, Labels: map[string]string{"name": app.Name}}
 	pod.Spec=v1.PodSpec{
 		RestartPolicy: v1.RestartPolicyAlways,
-		Containers: []v1.Container{
-			container,
-		},
 	}
+
+	var container v1.Container
+	if app.Types==TYPE_VNC{
+		container=this.createcontainer(app.Name,app.Image,5900)
+	}else{
+		container=this.createcontainer(app.Name,app.Image,app.TargetPort)
+	}
+	if len(app.Env)>0{
+		container.Env=app.Env
+	}
+
+	if app.Types==TYPE_RTIG{
+		nfsServer:=beego.AppConfig.String("nfsserver")
+		nfsPath:=beego.AppConfig.String("nfspath")
+
+		volumes:=make([]v1.Volume,1)
+		volume:=v1.Volume{
+			Name:"nfs-storage",
+		}
+		volume.NFS=&v1.NFSVolumeSource{nfsServer, nfsPath, false}
+		volumes[0]=volume
+		pod.Spec.Volumes=volumes
+
+		volumeMounts:=make([]v1.VolumeMount,1)
+		volumeMount:=v1.VolumeMount{
+			Name:"nfs-storage",
+			MountPath:"/root/certi/fom_files",
+			SubPath:app.Namespace+"/"+app.TaskName,
+		}
+		volumeMounts[0]=volumeMount
+		container.VolumeMounts=volumeMounts
+	}
+
+	pod.Spec.Containers= []v1.Container{container}
+
+	if app.Types==TYPE_VNC{
+		containernovnc:=this.createcontainer(app.Name+"-novnc",Newregistry.GetIpPort()+"/novnc",app.TargetPort)
+		pod.Spec.Containers=append(pod.Spec.Containers,containernovnc)
+	}
+
 	result, err := this.K8sclient.CoreV1().Pods(app.Namespace).Create(pod)
 	if err !=nil{
 		fmt.Println(err.Error())

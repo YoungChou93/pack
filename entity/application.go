@@ -1,15 +1,17 @@
 package entity
 
 import (
+	"github.com/astaxie/beego"
 	"container/list"
 	"github.com/YoungChou93/pack/client"
 	"errors"
+	"os"
 )
 
 type Application struct {
-	taskMap map[string]*list.List
-	findMap map[string]*list.Element
-	client  client.KubernetesClient
+	taskMap map[string]*list.List //存放仿真任务
+	findMap map[string]*list.Element //快速定位仿真任务
+	client  client.KubernetesClient //k8s 客户端
 }
 
 func NewApplication(client client.KubernetesClient) Application {
@@ -43,7 +45,13 @@ func (this *Application) RemoveTask(namespace string, name string)(error) {
 		if tasks, ok := this.taskMap[namespace]; ok {
 			task := e.Value.(Task)
 			tasks.Remove(e)
+			//删除仿真任务的.fed文件
+			nfspath := beego.AppConfig.String("nfspath")
+			dirpath := nfspath + "/"+task.Namespace+"/"+task.Name
+			os.RemoveAll(dirpath)
+			//删除仿真成员
 			for _, member := range task.Members {
+				//删除k8s对象 svc rc pod
 				if member.Service != nil {
 					err:=this.client.RemoveService(member.Namespace, member.Name)
 					if err!=nil{
@@ -77,6 +85,7 @@ func (this *Application) GetTasks(namespace string) ([]Task, error) {
 	}
 }
 
+//将list转化为task数组
 func (this *Application) ListToTasks(list *list.List) []Task {
 	i := 0
 	tasks := make([]Task, list.Len())
@@ -117,19 +126,22 @@ func (this *Application) modifyTask(task Task) error {
 }
 
 func (this *Application) AddTaskMember(task Task,member TaskMember) error{
-	pod,err:=this.client.CreatePod(member.GetK8sApp())
+	pod,err:=this.client.CreatePod(member.GetK8sApp(task.Name))
 	if err!=nil{
 		return err
 	}
-	rc,err:=this.client.CreateReplicationController(member.GetK8sApp(),pod)
+	rc,err:=this.client.CreateReplicationController(member.GetK8sApp(task.Name),pod)
 	if err!=nil{
+		this.client.RemovePod(member.Namespace,member.Name)
 		return err
 	}
 	member.Pod=pod
 	member.Rc=rc
 	if member.Types!=3 {
-		s, err := this.client.CreateService(member.GetK8sApp())
+		s, err := this.client.CreateService(member.GetK8sApp(task.Name))
 		if err!=nil{
+			this.client.RemoveReplicationController(member.Namespace,member.Name)
+			this.client.RemovePod(member.Namespace,member.Name)
 			return err
 		}
 		member.Service = s

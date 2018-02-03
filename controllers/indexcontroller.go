@@ -3,6 +3,7 @@ package controllers
 import (
 	"github.com/astaxie/beego"
 	"github.com/YoungChou93/pack/entity"
+	"github.com/YoungChou93/pack/client"
 )
 
 type IndexController struct {
@@ -21,7 +22,7 @@ type SetController struct {
 
 func (c *SetController) Get() {
 	c.TplName = "setting.html"
-	c.Data["registry"]=&entity.Newregistry
+	c.Data["registry"]=&client.Newregistry
 	c.Data["k8sui"]=&entity.Newk8sui
 }
 
@@ -32,9 +33,9 @@ func (c *SetController) SetRegistry() {
 
 	result:=entity.Result{}
 
-	entity.Newregistry.Ipaddr=ipaddr
-	entity.Newregistry.Port=port
-	entity.Newregistry.Version=version
+	client.Newregistry.Ipaddr=ipaddr
+	client.Newregistry.Port=port
+	client.Newregistry.Version=version
 
 	result.Success=true
 	c.Data["json"] = &result

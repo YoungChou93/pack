@@ -14,6 +14,7 @@ import (
 	"os"
 	"strings"
 	"fmt"
+	myclient "github.com/YoungChou93/pack/client"
 )
 
 type RegistryController struct {
@@ -23,7 +24,7 @@ type RegistryController struct {
 func (c *RegistryController) Get() {
 
 	c.TplName = "registry.html"
-	c.Data["url"] = entity.Newregistry.GetUrl()
+	c.Data["url"] = myclient.Newregistry.GetUrl()
 
 }
 
@@ -32,7 +33,7 @@ func (c *RegistryController) List() {
 	var err error
 	var body []byte
 
-	resp, err = http.Get(entity.Newregistry.GetUrl() + "/_catalog")
+	resp, err = http.Get(myclient.Newregistry.GetUrl() + "/_catalog")
 	if err != nil {
 		c.Data["error"] = err.Error()
 		return
@@ -53,7 +54,7 @@ func (c *RegistryController) List() {
 	registryimage := entity.RegistryImage{Images: imageList}
 
 	for _, name := range repositoriesInfo.Repositories {
-		resp, err = http.Get(entity.Newregistry.GetUrl() + "/" + name + "/tags/list")
+		resp, err = http.Get(myclient.Newregistry.GetUrl() + "/" + name + "/tags/list")
 
 		body, err = ioutil.ReadAll(resp.Body)
 
@@ -81,10 +82,10 @@ func (c *RegistryController) Push() {
 	}
 
 	var newTag string
-	if strings.Contains(imagename, entity.Newregistry.GetIpPort()) {
+	if strings.Contains(imagename, myclient.Newregistry.GetIpPort()) {
 		newTag = imagename
 	} else {
-		newTag = entity.Newregistry.GetIpPort() + "/" + imagename
+		newTag = myclient.Newregistry.GetIpPort() + "/" + imagename
 	}
 
 	cli.ImageTag(ctx, imagename, newTag)
@@ -120,7 +121,7 @@ func (c *RegistryController) Pull() {
 
 	imagename := c.GetString("imagename")
 
-	imagename = entity.Newregistry.GetIpPort() + "/" + imagename
+	imagename = myclient.Newregistry.GetIpPort() + "/" + imagename
 
 	result := entity.Result{}
 

@@ -14,6 +14,7 @@
     html,body {
         background-color: white;
         font-family: 微软雅黑;
+        background-color: #bbccdd;
     }
     h4{
         margin: 2px;
@@ -27,6 +28,16 @@
         text-align: right;
         width:150px;
     }
+
+    /*.panel-primary>.panel-heading {
+        color: #fff;
+        background-color: #63BDE8;
+        border-color: #63BDE8;
+    }
+
+    .panel-primary {
+        border-color: #63BDE8;
+    }*/
 
 </style>
 <script type="text/javascript">
@@ -46,22 +57,7 @@
             $("#commandcontent").val("");
         });
 
-        $('#submit').click(function(){
-            if($("#imagename").val()==null || $("#imagename").val()=="") {
-                alert("名称不能为空");
-                return false;
-            }
-            if($("#version").val()==null || $("#version").val()=="") {
-                alert("版本不能为空");
-                return false;
-            }
-            if($("#commands").val()==null || $("#commands").val()=="") {
-                alert("命令不能为空");
-                return false;
-            }
-            $('form').submit();
 
-        });
 
     });
 
@@ -75,13 +71,63 @@
         }
     }
 
+    function encapsulation() {
+
+
+        if ($("#imagename").val() == null || $("#imagename").val() == "") {
+            alert("名称不能为空");
+            return false;
+        }
+        if ($("#version").val() == null || $("#version").val() == "") {
+            alert("版本不能为空");
+            return false;
+        }
+        if ($("#commands").val() == null || $("#commands").val() == "") {
+            alert("命令不能为空");
+            return false;
+        }
+        //$('form').submit();
+        var form=document.getElementById("uploadform");
+        var fd =new FormData(form);
+
+        $.ajax({
+            url: "/encapsulation",
+            type: 'POST',
+            cache: false,
+            data: fd,
+            processData: false,
+            contentType: false,
+            dataType: "json",
+            beforeSend: function () {
+                $("#waitDialogBody").empty();
+                var optionStr ="<p>等待中……</p>";
+                $("#waitDialogBody").append(optionStr);
+                $('#waitDialog').modal('show');
+
+            },
+            success: function (data) {
+                if (data.Success) {
+                    $('#waitDialog').modal('hide');
+                    alert("封装成功！");
+                    $("#imagename").val("");
+                    $("#version").val("");
+                    $("#commands").val("");
+                } else {
+                    alert("封装成功！"+data.Reason);
+                }
+
+            }
+        });
+
+    }
+
 </script>
 <body>
 <div class="container-fluid">
     <div class="row">
         <div class="panel panel-primary">
             <div class="panel-heading"><h4>封装</h4></div>
-            <form class="form-horizontal" action="/encapsulation" method="post"  enctype="multipart/form-data">
+            <form class="form-horizontal" action="/encapsulation" method="post" id="uploadform" enctype="multipart/form-data">
             <table class=" table-hover table-condensed text-center">
                 <tr>
                     <td class="td1">
@@ -160,7 +206,7 @@
                     <td>
                     </td>
                     <td>
-                        <button type="submit" class="btn btn-primary" id="submit">提交</button>
+                        <button type="button" class="btn btn-primary" onclick="encapsulation()">提交</button>
                     </td>
                     <td>
                     </td>
@@ -169,6 +215,18 @@
             </form>
     </div>
     </div>
+</div>
+<div class="modal fade " tabindex="-1" role="dialog" id="waitDialog">
+    <div class="modal-dialog modal-sm" role="document" >
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                <h4 class="modal-title" id="mySmallModalLabel">系统提示</h4>
+            </div>
+            <div class="modal-body" id="waitDialogBody">
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
 </div>
 </body>
 </html>

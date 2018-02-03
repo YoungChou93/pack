@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"github.com/YoungChou93/pack/entity"
 )
 
 type UploadController struct {
@@ -27,12 +28,16 @@ func (c *UploadController) EncapsulationView() {
 
 func (c *UploadController) Encapsulation() {
 	var err error
+	result := entity.Result{Success:true}
+
 
 	imagename := c.GetString("imagename")
 	version := c.GetString("version")
 	software, header, _ := c.GetFile("software")
 	commands := c.GetString("commands")
 	baseimage := c.GetString("baseimage")
+
+	fmt.Println(imagename)
 
 	//保存待封装软件
 	packpath := beego.AppConfig.String("packpath")
@@ -104,7 +109,7 @@ func (c *UploadController) Encapsulation() {
 	dockerBuildContext, err := os.Open(tarpath + imagename + version + ".tar")
 	defer dockerBuildContext.Close()
 	defaultHeaders := map[string]string{"Content-Type": "application/tar"}
-	cli, _ := client.NewClient("unix:///var/run/docker.sock", "v1.27", nil, defaultHeaders)
+	cli, _ := client.NewClient("unix:///var/run/docker.sock", beego.AppConfig.String("dockerversion"), nil, defaultHeaders)
 	options := types.ImageBuildOptions{
 		SuppressOutput: true,
 		Remove:         true,
@@ -121,19 +126,20 @@ func (c *UploadController) Encapsulation() {
 		fmt.Printf("%s", err.Error())
 	}
 	fmt.Println(string(response))
-	result:=string(response)
-	if(strings.Contains(result,"error")){
-		c.Data["content"] = "FAIL"
-	}else{
-		c.Data["content"] = "SUCCESS"
+	results:=string(response)
+	if(strings.Contains(results,"error")){
+		result.Success=false
+		result.Reason=results
 	}
-
-	c.TplName = "result.html"
+	c.Data["json"] = &result
+	c.ServeJSON()
 
 }
 
 func (this *UploadController) Post() {
 	var err error
+
+	result := entity.Result{Success:true}
 
 	imagename := this.GetString("imagename")
 	version := this.GetString("version")
@@ -156,6 +162,8 @@ func (this *UploadController) Post() {
 	f, err := os.OpenFile(dirpath+delimiter+header.Filename, os.O_CREATE|os.O_RDWR, 0777)
 	if err != nil {
 		fmt.Println("文件打开失败")
+		result.Success=false
+		result.Reason="文件打开失败"
 		return
 	}
 	defer f.Close()
@@ -163,6 +171,8 @@ func (this *UploadController) Post() {
 	_, err = io.Copy(f, software)
 	if err != nil {
 		fmt.Println("文件保存失败" + err.Error())
+		result.Success=false
+		result.Reason="文件保存失败"
 		return
 	}
 
@@ -199,7 +209,7 @@ func (this *UploadController) Post() {
 		PullParent:     true,
 		Tags:           []string{imagename + ":" + version}}
 	buildResponse, err := cli.ImageBuild(context.Background(), dockerBuildContext, options)
-	//defer buildResponse.Body.Close()
+	defer buildResponse.Body.Close()
 	if err != nil {
 		fmt.Printf("%s", err.Error())
 	}
@@ -211,6 +221,7 @@ func (this *UploadController) Post() {
 	}
 	fmt.Println(string(response))
 
-	this.Ctx.Redirect(302, "/upload")
+	this.Data["json"] = &result
+	this.ServeJSON()
 
 }

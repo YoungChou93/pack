@@ -12,11 +12,15 @@
 </head>
 <style type="text/css">
     html,body {
-        background-color: white;
+        background-color: #bbccdd;
         font-family: 微软雅黑;
+        height:100%;
+        width:100%;
+
     }
+
     h4{
-        margin: 2px;
+        margin: 1px;
     }
 
     table{
@@ -24,6 +28,7 @@
         font-family: 微软雅黑;
         font-size:16px;
     }
+
 
     .td1{
         text-align: right;
@@ -38,12 +43,15 @@
 
     $(function() {
         list();
-        $.post("/localimage/list", function (result) {
+
+        $.post("/registry/list", function (result) {
+            result=result.Images;
             $.each(result, function (index, element) {
-                if(element.RepoTags!=null){
-                    var optionStr = "<option>" + element.RepoTags[0] + "</option>";
+                $.each(element.Tags, function (index, e) {
+                    var optionStr = "<option>" + element.Name +":"+e + "</option>";
                     $("#image").append(optionStr)
-                }
+                });
+
             });
         }, "json");
 
@@ -58,7 +66,7 @@
                 $("#ports").hide();
                 $("#env").show();
                 $("#env2").show();
-            }else if($("#type").val()==2){
+            }else if($("#type").val()==2 || $("#type").val()==4){
                 $("#ports").show();
                 $("#env").show();
                 $("#env2").show();
@@ -104,8 +112,9 @@
                     "</td><td style='width:120px;text-align: center;vertical-align:middle;'>" + formatService(element)+
                     "</td><td style='width:80px;text-align: center;vertical-align:middle;'>" + element.Port+
                     "</td><td style='text-align: center;vertical-align:middle;'>" + element.Pod.status.phase+
-                    "</td><td style='width:100px;'><button  class='btn btn-info' onclick='getLog("+index+")'><span class='glyphicon glyphicon-list-alt'></span></button>"+
+                    "</td><td style='width:150px;'><button  class='btn btn-info' onclick='getLog("+index+")'><span class='glyphicon glyphicon-list-alt'></span></button>"+
                     "<button  class='btn btn-danger'  style='margin-left: 5px;' onclick='preRemove("+index+")'><span class='glyphicon glyphicon-remove'></span></button>"+
+                    formatMember(element,index)+
                 "</td></tr>";
                 $("#apps").append(optionStr)
                 number++;
@@ -114,12 +123,33 @@
         }, "json");
     }
 
+    function formatMember(element,index){
+        if(element.Types==2 || element.Types==4) {
+            return "<button  class='btn btn-success' style='margin-left: 5px;' onclick='openSSH("+index+")'><span class='glyphicon glyphicon-link'></span></button>";
+        }else{
+            return "";
+        }
+    }
+
     function formatService(element){
         if(element.Service!=null) {
             return element.Service.spec.clusterIP;
         }else{
             return "-";
         }
+    }
+
+
+    function openSSH(index){
+        $("#ssha").remove();
+        $("#sshbody").append("<a id='ssha' href='"+"https://"+task.Members[index].Pod.status.hostIP+":"+task.Members[index].Service.spec.ports[0].nodePort+"' style='display: none' target='_blank'></a>");
+        document.getElementById("ssha").click();
+        //$("#ssh").show();
+
+    }
+
+    function closeSSH(){
+        $("#ssh").hide();
     }
 
 
@@ -138,7 +168,7 @@
         }
         if($("#type").val()==3){
             map.env=envarray;
-        }else if($("#type").val()==2){
+        }else if($("#type").val()==2 || $("#type").val()==4){
             map.port=$("#port").val();
             map.nameenv=$("#nameenv").val();
             map.valueenv=$("#valueenv").val() ;
@@ -216,7 +246,7 @@ function addApp() {
 <body>
 <div class="container-fluid">
     <div class="row">
-        <div class="panel panel-primary">
+        <div class="panel panel-primary" style="max-height: 50%;">
             <div class="panel-heading"><h4>{{ .task.Name}}<span class="glyphicon glyphicon-plus" onclick="addApp()" style="float:right;margin-left: 10px;"></span>
                 <span class="glyphicon glyphicon-refresh" onclick="list()" style="float:right"></span></h4> </div>
             <table class="table table-hover table-condensed table-striped" id="apps">
@@ -224,6 +254,14 @@ function addApp() {
             </table>
 
     </div>
+        <div class="panel panel-primary"  style="height: 500px;bottom:0px;display: none; " id="ssh">
+            <div class="panel-heading"><h4>SSH&nbsp;&nbsp;user:guest&nbsp;password:123456<span class="glyphicon glyphicon-remove" onclick="closeSSH()" style="float:right;margin-left: 10px;"></span></h4></div>
+            <div id="sshbody" style="height:480px;width:100%;">
+                <iframe name="sshcontent" frameborder="no" border="0" style="height:100%;width:100%;padding-bottom: 25px;">
+                </iframe>
+            </div>
+
+        </div>
     </div>
 </div>
 
@@ -244,8 +282,9 @@ function addApp() {
                         <td>
                             <select id="type" class="form-control" name="type">
                                 <option value="1">RTIG</option>
-                                <option value="2">初始成员</option>
-                                <option value="3">其他成员</option>
+                                <option value="2">SSH成员</option>
+                                <option value="3">普通成员</option>
+                                <option value="4">VNC成员</option>
                             </select>
                         </td>
                     </tr>
