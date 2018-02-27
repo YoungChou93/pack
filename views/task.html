@@ -59,6 +59,7 @@
         $("#port").show();
         $("#env").hide();
         $("#env2").hide();
+        $("#cmds").hide();
 
 
         $("#type").change(function(){
@@ -66,14 +67,17 @@
                 $("#ports").hide();
                 $("#env").show();
                 $("#env2").show();
+                $("#cmds").show();
             }else if($("#type").val()==2 || $("#type").val()==4){
                 $("#ports").show();
                 $("#env").show();
                 $("#env2").show();
+                $("#cmds").hide();
             }else{
                 $("#ports").show();
                 $("#env").hide();
                 $("#env2").hide();
+                $("#cmds").hide();
             }
         });
 
@@ -142,7 +146,7 @@
 
     function openSSH(index){
         $("#ssha").remove();
-        $("#sshbody").append("<a id='ssha' href='"+"https://"+task.Members[index].Pod.status.hostIP+":"+task.Members[index].Service.spec.ports[0].nodePort+"' style='display: none' target='_blank'></a>");
+        $("#sshbody").append("<a id='ssha' href='"+"https://"+task.Members[index].Pod.status.hostIP+":"+task.Members[index].Service.spec.ports[0].nodePort+"/vnc.html"+"' style='display: none' target='_blank'></a>");
         document.getElementById("ssha").click();
         //$("#ssh").show();
 
@@ -168,11 +172,13 @@
         }
         if($("#type").val()==3){
             map.env=envarray;
-        }else if($("#type").val()==2 || $("#type").val()==4){
+            map.cmd=$("#cmd").val();
+        }else if($("#type").val()==2 ){
             map.port=$("#port").val();
-            map.nameenv=$("#nameenv").val();
-            map.valueenv=$("#valueenv").val() ;
-        }else{
+        }else if( $("#type").val()==4){
+            map.env=envarray;
+            map.port=$("#port").val();
+        } else{
             map.port=$("#port").val();
         }
 
@@ -238,6 +244,7 @@ function addApp() {
     $("#nameenv").val("");
     $("#valueenv").val("") ;
     $("#envs").val("") ;
+    $("#cmd").val("") ;
 
     $('#dialog').modal('show');
 }
@@ -332,7 +339,14 @@ function addApp() {
                             <textarea type="text" class="form-control" placeholder="name:value" id="envs" readonly style="height: 150px;"></textarea>
                         </td>
                     </tr>
-
+                    <tr id="cmds">
+                        <td class="td1">
+                            <label class="h4">命令：</label>
+                        </td>
+                        <td>
+                            <input type="text" class="form-control" id="cmd"/>
+                        </td>
+                    </tr>
                 </table>
                 </form>
 

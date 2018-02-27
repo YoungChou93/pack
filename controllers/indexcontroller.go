@@ -22,7 +22,7 @@ type SetController struct {
 
 func (c *SetController) Get() {
 	c.TplName = "setting.html"
-	c.Data["registry"]=&client.Newregistry
+	c.Data["registry"]=&client.MajorRegistry
 	c.Data["k8sui"]=&entity.Newk8sui
 }
 
@@ -33,9 +33,9 @@ func (c *SetController) SetRegistry() {
 
 	result:=entity.Result{}
 
-	client.Newregistry.Ipaddr=ipaddr
-	client.Newregistry.Port=port
-	client.Newregistry.Version=version
+	client.MajorRegistry.Ipaddr=ipaddr
+	client.MajorRegistry.Port=port
+	client.MajorRegistry.Version=version
 
 	result.Success=true
 	c.Data["json"] = &result

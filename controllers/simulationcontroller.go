@@ -108,14 +108,25 @@ func (c *SimulationController) Run() {
 
 	name := c.GetString("name")
 	image := c.GetString("image")
+	cmd := c.GetString("cmd")
 	types, _:= c.GetInt("type")
 	result := entity.Result{Success:true}
 
-	if !strings.Contains(image,client.Newregistry.GetIpPort()){
-		image=client.Newregistry.GetIpPort()+"/"+image
+	var cmds []string
+	if len(cmd)>0{
+		cmds=strings.Split(cmd," -")
+		for i,_ :=range cmds{
+			if i>0 {
+				cmds[i]="-"+cmds[i]
+			}
+		}
 	}
 
-	member:= entity.TaskMember{Name: name, Namespace: task.Namespace, Image: image, InstanceCount: 1, Types:types}
+	if !strings.Contains(image,client.MajorRegistry.GetIpPort()){
+		image=client.MajorRegistry.GetIpPort()+"/"+image
+	}
+
+	member:= entity.TaskMember{Name: name, Namespace: task.Namespace, Image: image, InstanceCount: 1, Cmd:cmds,Types:types}
 	switch types {
 	case 1:
 		port, _ := c.GetInt32("port")

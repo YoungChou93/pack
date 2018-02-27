@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <script type="text/javascript" src="/static/bootstrap/js/jquery-2.2.1.min.js"></script>
+    <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-treeview/dist/bootstrap-treeview.min.css">
+    <script type="text/javascript" src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/static/bootstrap-treeview/dist/bootstrap-treeview.min.js"></script>
+    <title>文件管理</title>
+</head>
+<style type="text/css">
+    html,body {
+        background-color: white;
+        font-family: 微软雅黑;
+        background-color: #bbccdd;
+    }
+
+</style>
+<script type="text/javascript">
+
+    $(function() {
+
+        $.post("/getpackpath", function (result) {
+
+            $('#tree').treeview({data:result});
+        }, "json");
+    });
+
+
+</script>
+<body>
+<div id="tree"></div>
+</body>
+</html>

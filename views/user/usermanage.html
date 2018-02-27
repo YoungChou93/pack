@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <script type="text/javascript" src="/static/bootstrap/js/jquery-2.2.1.min.js"></script>
+    <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-treeview/dist/bootstrap-treeview.min.css">
+    <script type="text/javascript" src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/static/bootstrap-treeview/dist/bootstrap-treeview.min.js"></script>
+    <title>用户管理</title>
+</head>
+<style type="text/css">
+    html,body {
+        background-color: white;
+        font-family: 微软雅黑;
+        background-color: #bbccdd;
+    }
+
+    table{
+        width:100%;
+        font-family: 微软雅黑;
+        font-size:16px;
+    }
+
+    .p1 {
+        font-size:20px ;
+        font-family: 微软雅黑;
+        width:100px;
+        margin:5px;
+        height:50px;
+        padding: 10px;
+    }
+
+    .td1{
+        text-align: right;
+        width:100px;
+    }
+
+    .footer{
+        width: 100%;
+        text-align: left;
+    }
+
+</style>
+<script type="text/javascript">
+
+    var itemindex=-1;
+    var items;
+    var currentpage=1;
+    var pagerow=10;
+
+
+    $(function() {
+        list();
+
+        $("#pageadd").click(function () {
+            if(currentpage*pagerow<items.length){
+                currentpage++;
+                $("#pagenumber").text(currentpage);
+                show();
+            }
+        });
+
+        $("#pagesub").click(function () {
+            if(currentpage>1){
+                currentpage--;
+                $("#pagenumber").text(currentpage);
+                show();
+            }
+        });
+
+
+
+
+    });
+
+    function show() {
+         var i=(currentpage-1)*pagerow;
+         var max=i+pagerow;
+        $("#tablebody").empty();
+         for(;i<max;i++){
+             var number=i+1;
+             var optionStr ="<tr onclick='selectRow("+i+")' id='user"+i+"'>" +
+                 "<th scope='row'>"+number+"</th>" +
+                 "<td>"+items[i].Id+"</td>" +
+                 "<td>"+items[i].Username+"</td>" +
+                 "<td>"+items[i].Password+"</td>" +
+                 "<td>"+formatStatus(items[i])+"</td>" +
+                 "</tr>";
+             $("#tablebody").append(optionStr);
+         }
+    }
+
+
+    function searchItem() {
+
+        var sea = $("#search").val();
+        if (sea == null || sea == "") {
+            list();
+            return false;
+        }
+        var searchitems = new Array();
+        $.each(items, function (index, element) {
+            if (element.Username.indexOf(sea) >= 0) {
+                searchitems.push(element);
+            }
+        });
+        items = searchitems;
+        firstList();
+    }
+
+
+    function list(){
+        $.post("/user/listuser", function (result) {
+            items=result;
+            firstList();
+        }, "json");
+
+    }
+
+    function firstList() {
+        var totalpage=Math.ceil(items.length/pagerow);
+        $("#totalpage").text("共"+totalpage+"页");
+        show();
+
+    }
+
+
+    function selectRow(index){
+        $("#user"+itemindex).removeClass('danger')
+        itemindex=index;
+        $("#user"+index).addClass('danger');
+    }
+
+
+    function formatStatus(element){
+        if(element.Status==1){
+            return "启用";
+        }else{
+            return "禁用"
+        }
+
+
+    }
+
+    function addUser() {
+        $('#dialog').modal('show');
+    }
+
+    function addexecute() {
+
+        $.post("/user/adduser", {
+            username : $('#username').val()
+        },function (result) {
+            if(result.Success){
+                $('#username').val("");
+                $('#dialog').modal('hide');
+                list();
+            }else {
+                alert(result.Reason);
+            }
+
+        }, "json");
+    }
+
+
+    function disableUser() {
+        if(itemindex==-1){
+            alert("请选择一位用户");
+            return false;
+        }
+            $.post("/user/disableuser", {
+                id : items[itemindex].Id
+            },function (result) {
+                if(result.Success){
+                    list();
+                    itemindex=-1;
+                }else {
+                    alert(result.Reason);
+                }
+
+            }, "json");
+    }
+
+    function enableUser() {
+        if(itemindex==-1){
+            alert("请选择一位用户");
+            return false;
+        }
+        $.post("/user/enableuser", {
+            id : items[itemindex].Id
+        },function (result) {
+            if(result.Success){
+                list();
+                itemindex=-1;
+            }else {
+                alert(result.Reason);
+            }
+
+        }, "json");
+    }
+
+    function addRight(){
+        if(itemindex==-1){
+            alert("请选择一位用户");
+            return false;
+        }
+        $.post("/user/getuserright", {
+            id : items[itemindex].Id
+        },function (result) {
+            if(result!=null){
+                $('#tree').treeview({
+                    selectedIcon:"glyphicon glyphicon-ok",
+                    multiSelect:true,
+                    data: result
+                });
+                $('#rightdialog').modal('show');
+            }else {
+                alert("error");
+            }
+
+        }, "json");
+    }
+
+    function setRight(){
+        var nodes=$('#tree').treeview('getSelected');
+        var strIds=[];
+        for(var i=0;i<nodes.length;i++){
+            strIds.push(nodes[i].id);
+        }
+        var ids=strIds.join(",");
+        $.post("/user/setuserright", {
+            id : items[itemindex].Id,
+            ids:ids
+        },function (result) {
+            if(result.Success){
+                $('#rightdialog').modal('hide');
+            }else {
+                alert("result.Reason");
+            }
+
+        }, "json");
+    }
+
+</script>
+<body>
+<div style="width: 100%;padding:5px;">
+    <button type="button" onclick="addUser()" class="btn btn-primary"><i class="glyphicon glyphicon-plus"></i>添加</button>
+    <button type="button" onclick="addRight()" class="btn btn-warning"><i class="glyphicon glyphicon-pencil"></i>权限</button>
+    <button type="button" onclick="enableUser()" class="btn btn-success"><i class="glyphicon glyphicon-ok"></i>启用</button>
+    <button type="button" onclick="disableUser()" class="btn btn-danger"><i class="glyphicon glyphicon-remove"></i>禁用</button>
+    <form class="form-inline" style="float:right;">
+        <div class="form-group">
+            <label class="sr-only" for="search">Amount (in dollars)</label>
+            <div class="input-group">
+                <div class="input-group-addon"><span class="glyphicon glyphicon-search"></span></div>
+                <input type="text" class="form-control" id="search" >
+            </div>
+        </div>
+        <button type="button" onclick="searchItem()" class="btn btn-primary">搜索</button>
+    </form>
+</div>
+<div class="panel panel-primary">
+    <div class="panel-heading">用户管理</div>
+    <table class="table">
+        <thead>
+        <tr>
+            <th>编号</th>
+            <th>ID</th>
+            <th>用户</th>
+            <th>密码</th>
+            <th>状态</th>
+        </tr>
+        </thead>
+        <tbody id="tablebody">
+
+        </tbody>
+    </table>
+</div>
+<div class="footer">
+    <nav aria-label="...">
+        <ul class="pagination" style="margin: 0px;">
+            <li >
+                <span>
+                    <span id="pagesub" aria-hidden="true">上一页</span>
+                </span>
+            </li>
+            <li>
+                <span id="pagenumber">1 <span class="sr-only">(current)</span></span>
+            </li>
+
+            <li>
+                <span>
+                    <span id="pageadd" aria-hidden="true">下一页</span>
+                </span>
+            </li>
+            <li>
+                <span id="totalpage">1 </span>
+            </li>
+        </ul>
+    </nav>
+
+</div>
+<div class="modal fade" tabindex="-1" role="dialog" id="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">添加</h4>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <table class=" table-hover">
+                        <tr>
+                            <td class="td1">
+                                <label class="h4">用户名：</label>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control" id="username"  placeholder="字母数字组合"/>
+                            </td>
+                        </tr>
+                    </table>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="addexecute()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<div class="modal fade" tabindex="-1" role="dialog" id="rightdialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">设置权限</h4>
+            </div>
+            <div class="modal-body">
+                <div id="tree"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="setRight()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+</body>
+</html>

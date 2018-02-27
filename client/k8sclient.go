@@ -30,6 +30,7 @@ type K8sApp struct {
 	TargetPort    int32
 	NodePort      int32
 	Env           []v1.EnvVar
+	Cmd           []string
 	Types         int
 }
 
@@ -103,7 +104,7 @@ func (this * KubernetesClient)CreateReplicationController(app K8sApp,pod *v1.Pod
 	return result,err
 }
 
-func (this * KubernetesClient)createcontainer(name,image string,targetport int32)(v1.Container){
+func (this * KubernetesClient)createcontainer(name,image string ,cmd []string,targetport int32)(v1.Container){
 	container:=v1.Container{
 		Name:  name,
 		Image: image,
@@ -114,6 +115,11 @@ func (this * KubernetesClient)createcontainer(name,image string,targetport int32
 			},
 		},
 	}
+
+	if len(cmd)>0 && len(cmd[0])>0 {
+		container.Command=cmd
+	}
+
 	return container
 }
 
@@ -129,9 +135,9 @@ func (this * KubernetesClient)CreatePod(app K8sApp)(*v1.Pod,error){
 
 	var container v1.Container
 	if app.Types==TYPE_VNC{
-		container=this.createcontainer(app.Name,app.Image,5900)
+		container=this.createcontainer(app.Name,app.Image,app.Cmd,5900)
 	}else{
-		container=this.createcontainer(app.Name,app.Image,app.TargetPort)
+		container=this.createcontainer(app.Name,app.Image,app.Cmd,app.TargetPort)
 	}
 	if len(app.Env)>0{
 		container.Env=app.Env
@@ -162,7 +168,7 @@ func (this * KubernetesClient)CreatePod(app K8sApp)(*v1.Pod,error){
 	pod.Spec.Containers= []v1.Container{container}
 
 	if app.Types==TYPE_VNC{
-		containernovnc:=this.createcontainer(app.Name+"-novnc",Newregistry.GetIpPort()+"/novnc",app.TargetPort)
+		containernovnc:=this.createcontainer(app.Name+"-novnc",MajorRegistry.GetIpPort()+"/novnc",nil,app.TargetPort)
 		pod.Spec.Containers=append(pod.Spec.Containers,containernovnc)
 	}
 

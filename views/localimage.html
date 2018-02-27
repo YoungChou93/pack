@@ -28,64 +28,135 @@
         font-size:16px;
     }
 
+    .footer{
+        width: 100%;
+        text-align: left;
+    }
+
 </style>
 <script type="text/javascript">
-    var images;
-    var imageindex;
+
+    var itemindex=-1;
+    var items;
+    var currentpage=1;
+    var pagerow=15;
     var url;
     var map;
     $(function() {
+        listregistry();
         list();
+
+        $("#registryselect").change(function(){
+            map.id=$("#registryselect").val();
+        });
+
+
+        $("#pageadd").click(function () {
+            if(currentpage*pagerow<items.length){
+                currentpage++;
+                $("#pagenumber").text(currentpage);
+                show();
+            }
+        });
+
+        $("#pagesub").click(function () {
+            if(currentpage>1){
+                currentpage--;
+                $("#pagenumber").text(currentpage);
+                show();
+            }
+        });
     });
 
+    function listregistry(){
+        $.post("/registry/listregistry", function (result) {
+            $("#registryselect").empty();
+            $.each(result, function (index, element) {
+                var optionStr =" <option value='"+element.Id+"'>"+element.Name+"</option>";
+                $("#registryselect").append(optionStr)
+            });
+        }, "json");
+
+    }
 
     function list() {
         $.post("/localimage/list", function (result) {
-            images=result;
-            $("#localimage").empty();
-            $.each(result, function (index, element) {
-                number=index+1;
-                if(element.RepoTags==null){
-                    element.RepoTags=new Array();
-                    element.RepoTags[0]="null";
-                }
-                var optionStr = "<tr><td style='width:80px;text-align: center;vertical-align:middle;'>"+number+
-                    "</td><td style='text-align: left;vertical-align:middle;'>" + element.RepoTags[0] +
-                    "</td><td style='width:100px;'><button  class='btn btn-danger' onclick='preRemove("+index+")'><span class='glyphicon glyphicon-remove'></span></button>" +
-                    "<button  class='btn btn-info' style='margin-left: 5px;' onclick='prePush("+index+")'><span class='glyphicon glyphicon-arrow-up'></span></button></td></tr>";
-                $("#localimage").append(optionStr)
-            });
+            items=result;
+            firstList();
         }, "json");
     }
 
+    function firstList() {
+        var totalpage=Math.ceil(items.length/pagerow);
+        $("#totalpage").text("共"+totalpage+"页");
+        currentpage=1;
+        $("#pagenumber").text(currentpage);
+        show();
+
+    }
+
+    function show() {
+        var i=(currentpage-1)*pagerow;
+        var max=i+pagerow;
+        $("#tablebody").empty();
+        for(;i<max;i++){
+            var number=i+1;
+            var optionStr ="<tr>" +
+                "<th scope='row'>"+number+"</th>" +
+                "<td>"+items[i].Name+"</td>" +
+                "<td>"+items[i].Size+"</td>" +
+                "<td>"+items[i].Id+"</td>" +
+                "<td>"+items[i].Created+"</td>" +
+                "<td style='width:100px;'><button  class='btn btn-danger' onclick='preRemove("+i+")'><span class='glyphicon glyphicon-trash'></span></button>" +
+                "<button  class='btn btn-info' style='margin-left: 5px;' onclick='prePush("+i+")'><span class='glyphicon glyphicon-arrow-up'></span></button></td>"+
+                "</tr>";
+            $("#tablebody").append(optionStr);
+        }
+    }
+
+    function searchItem() {
+
+        var sea = $("#search").val();
+        if (sea == null || sea == "") {
+            list();
+            return false;
+        }
+        var searchitems = new Array();
+        $.each(items, function (index, element) {
+            if (element.Name.indexOf(sea) >=0) {
+                searchitems.push(element);
+            }
+        });
+        items = searchitems;
+        firstList();
+    }
 
 
     function prePush(index){
-        imageindex=index;
-        $("#dialogBody").empty();
-        var optionStr ="<p>确定要将<font color='red'>"+images[imageindex].RepoTags[0]+"</font>推送到镜像仓库吗?</p>";
-        $("#dialogBody").append(optionStr);
-        $('#dialog').modal('show');
+        itemindex=index;
+        $('#pushdialog').modal('show');
         url="/registry/imagepush";
         map={
-            imagename : images[imageindex].RepoTags[0]
+            imagename : items[itemindex].Name,
+            id : $("#registryselect").val()
         };
     }
 
     function preRemove(index){
-        imageindex=index;
+        itemindex=index;
         $("#dialogBody").empty();
-        var optionStr ="<p>确定要将<font color='red'>"+images[imageindex].RepoTags[0]+"</font>删除吗?</p>";
+        var optionStr ="<p>确定要将<font color='red'>"+items[itemindex].Name+"</font>删除吗?</p>";
         $("#dialogBody").append(optionStr);
         $('#dialog').modal('show');
         url="/localimage/remove";
         map={
-            imageid : images[imageindex].Id
+            imageid : items[itemindex].Id
         };
     }
 
     function execute(){
         $('#dialog').modal('hide');
+        $('#pushdialog').modal('hide');
         $("#waitDialogBody").empty();
         var optionStr ="<p>等待中……</p>";
         $("#waitDialogBody").append(optionStr);
@@ -107,20 +178,65 @@
         });
     }
 
-
-
 </script>
 <body>
+<div class="form-inline" style="width: 100%;padding:5px;height: 50px;">
+    <form class="form-inline" style="float:right;">
+        <div class="form-group">
+            <label class="sr-only" for="search">Amount (in dollars)</label>
+            <div class="input-group">
+                <div class="input-group-addon"><span class="glyphicon glyphicon-search"></span></div>
+                <input type="text" class="form-control" id="search" >
+            </div>
+        </div>
+        <button type="button" onclick="searchItem()" class="btn btn-primary">搜索</button>
+    </form>
+</div>
 <div class="container-fluid">
     <div class="row">
         <div class="panel panel-primary">
-            <div class="panel-heading"><h4>Local Image</h4></div>
+            <div class="panel-heading"><h4>本地镜像</h4></div>
             <table class="table table-hover table-condensed table-striped" id="localimage">
-
+                <thead>
+                <tr>
+                    <th>编号</th>
+                    <th>名称</th>
+                    <th>大小</th>
+                    <th>镜像ID</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody id="tablebody">
+                </tbody>
             </table>
         </div>
     </div>
 </div>
+<div class="footer">
+    <nav aria-label="...">
+        <ul class="pagination" style="margin: 0px;">
+            <li >
+                <span>
+                    <span id="pagesub" aria-hidden="true">上一页</span>
+                </span>
+            </li>
+            <li>
+                <span id="pagenumber">1 <span class="sr-only">(current)</span></span>
+            </li>
+
+            <li>
+                <span>
+                    <span id="pageadd" aria-hidden="true">下一页</span>
+                </span>
+            </li>
+            <li>
+                <span id="totalpage">1 </span>
+            </li>
+        </ul>
+    </nav>
+</div>
+
 <div class="modal fade" tabindex="-1" role="dialog" id="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -129,6 +245,27 @@
                 <h4 class="modal-title">系统提示</h4>
             </div>
             <div class="modal-body" id="dialogBody">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="execute()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<div class="modal fade" tabindex="-1" role="dialog" id="pushdialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">推送</h4>
+            </div>
+            <div class="modal-body" id="pushdialogBody">
+                <div class="input-group">
+                    <div class="input-group-addon">选择仓库</span></div>
+                    <select id="registryselect" class="form-control ">
+                    </select>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" onclick="execute()">确定</button>

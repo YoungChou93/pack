@@ -30,42 +30,116 @@
         font-size: 10px;
     }
 
+    .footer{
+        width: 100%;
+        text-align: left;
+    }
+
 </style>
 <script type="text/javascript">
-    var array=new Array();
-    var number=0;
+    var itemindex=-1;
+    var items;
+    var currentpage=1;
+    var pagerow=10;
     var url;
     var map;
     $(function() {
-        $.post("/registry/list", function (result) {
-            result=result.Images;
-            $.each(result, function (index, element) {
+        listregistry();
 
-                $.each(element.Tags, function (index, e) {
-                    number++;
-                    imagename= element.Name +":"+e;
-                    array[number-1]=imagename;
-                    var optionStr = "<tr><td style='width:80px;text-align: center;vertical-align:middle;'>"+number+
-                        "</td><td style='text-align: left;vertical-align:middle;'>" +imagename+
-                        "</td><td style='width:60px;'>" +
-                        "<button  class='btn btn-info' style='margin-left: 5px;' onclick='prePull("+number+")'><span class='glyphicon glyphicon-arrow-down'></span></button></td></tr>";
-                    $("#registry").append(optionStr)
+        $("#registryselect").change(function(){
+            list()
+        });
 
-                });
+        $("#pageadd").click(function () {
+            if(currentpage*pagerow<items.length){
+                currentpage++;
+                $("#pagenumber").text(currentpage);
+                show();
+            }
+        });
 
-            });
-        }, "json");
-
+        $("#pagesub").click(function () {
+            if(currentpage>1){
+                currentpage--;
+                $("#pagenumber").text(currentpage);
+                show();
+            }
+        });
     });
 
-    function prePull(index){
+    function listregistry(){
+        $.post("/registry/listregistry", function (result) {
+            $("#registryselect").empty();
+            $.each(result, function (index, element) {
+                var optionStr =" <option value='"+element.Id+"'>"+element.Name+"</option>";
+                $("#registryselect").append(optionStr)
+            });
+            list();
+        }, "json");
+
+    }
+
+    function list(){
+        $.post("/registry/list",{
+            id : $("#registryselect").val()
+        }, function (result) {
+            items=result;
+            firstList();
+        }, "json");
+    }
+
+    function firstList() {
+        var totalpage=Math.ceil(items.length/pagerow);
+        $("#totalpage").text("共"+totalpage+"页");
+        show();
+
+    }
+
+
+    function show() {
+        var i=(currentpage-1)*pagerow;
+        var max=i+pagerow;
+        $("#tablebody").empty();
+        for(;i<max;i++){
+            var number=i+1;
+            var imagename= items[i].Name +":"+items[i].Tag;
+            var optionStr = "<tr><td>"+number+
+                "</td><td style='text-align: left;vertical-align:middle;'>" +imagename+
+                "</td><td style='text-align: left;vertical-align:middle;'>" +items[i].Registry+
+                "</td><td style='width:60px;'>" +
+                "<button  class='btn btn-info' style='margin-left: 5px;' onclick='prePull("+i+")'><span class='glyphicon glyphicon-arrow-down'></span></button></td></tr>";
+            $("#tablebody").append(optionStr)
+        }
+    }
+
+    function searchItem() {
+
+        var sea = $("#search").val();
+        if (sea == null || sea == "") {
+            list();
+            return false;
+        }
+        var searchitems = new Array();
+        $.each(items, function (index, element) {
+            if (element.Name.indexOf(sea) >= 0) {
+                searchitems.push(element);
+            }
+        });
+        items = searchitems;
+        firstList();
+    }
+
+
+    function prePull(i){
+        var imagename=items[i].Name +":"+items[i].Tag;
         $("#dialogBody").empty();
-        var optionStr ="<p>确定要拉取<font color='red'>"+array[index-1]+"</font>吗?</p>";
+        var optionStr ="<p>确定要拉取<font color='red'>"+imagename+"</font>吗?</p>";
         $("#dialogBody").append(optionStr);
         $('#dialog').modal('show');
         url="/registry/imagepull";
         map={
-            imagename : array[index-1]
+            imagename : imagename,
+            id :$("#registryselect").val()
         };
     }
 
@@ -95,16 +169,66 @@
 
 </script>
 <body>
+<div class="form-inline" style="width: 100%;padding:5px;">
+    <div class="input-group">
+        <div class="input-group-addon"><span class="glyphicon glyphicon-home">仓库</span></div>
+        <select id="registryselect" class="form-control " name="type">
+        </select>
+    </div>
+    <form class="form-inline" style="float:right;">
+        <div class="form-group">
+            <label class="sr-only" for="search">Amount (in dollars)</label>
+            <div class="input-group">
+                <div class="input-group-addon"><span class="glyphicon glyphicon-search"></span></div>
+                <input type="text" class="form-control" id="search" >
+            </div>
+        </div>
+        <button type="button" onclick="searchItem()" class="btn btn-primary">搜索</button>
+    </form>
+</div>
 <div class="container-fluid">
     <div class="row">
 
             <div class="panel panel-primary">
-                <div class="panel-heading"><h4 style="float:left;padding:2px;">Registry </h4><p style="width:300px;margin-top:4px;margin-left:2px;">[{{ .url}}]</p></div>
-                <table class="table table-hover table-condensed table-striped" id="registry">
+                <div class="panel-heading"><h4 >Registry </h4></div>
+                <table class="table table-hover table-condensed table-striped">
+                    <thead>
+                    <tr>
+                        <th>编号</th>
+                        <th>镜像名称</th>
+                        <th>仓库</th>
+                        <th>操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="tablebody">
 
+                    </tbody>
                 </table>
             </div>
     </div>
+</div>
+<div class="footer">
+    <nav aria-label="...">
+        <ul class="pagination" style="margin: 0px;">
+            <li >
+                <span>
+                    <span id="pagesub" aria-hidden="true">上一页</span>
+                </span>
+            </li>
+            <li>
+                <span id="pagenumber">1 <span class="sr-only">(current)</span></span>
+            </li>
+
+            <li>
+                <span>
+                    <span id="pageadd" aria-hidden="true">下一页</span>
+                </span>
+            </li>
+            <li>
+                <span id="totalpage">1 </span>
+            </li>
+        </ul>
+    </nav>
 </div>
 <div class="modal fade" tabindex="-1" role="dialog" id="dialog">
     <div class="modal-dialog" role="document">

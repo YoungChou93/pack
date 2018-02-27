@@ -23,6 +23,13 @@ func init() {
 	beego.Router("/registry/imagepush", &controllers.RegistryController{},"post:Push")
 	beego.Router("/registry/imagepull", &controllers.RegistryController{},"post:Pull")
 
+	//镜像仓库管理
+	beego.Router("/registrymanage", &controllers.RegistryController{},"get:RegistryView")
+	beego.Router("/registry/addregistry", &controllers.RegistryController{},"post:AddRegistry")
+	beego.Router("/registry/listregistry", &controllers.RegistryController{},"post:ListRegistry")
+	beego.Router("/registry/majorregistry", &controllers.RegistryController{},"post:MajorRegistry")
+	beego.Router("/registry/deleteregistry", &controllers.RegistryController{},"post:DeleteRegistry")
+
     //仿真任务
 	beego.Router("/simulation/tasksview", &controllers.SimulationController{},"get:TasksView")
 	beego.Router("/simulation/addtask", &controllers.SimulationController{},"post:AddTask")
@@ -41,4 +48,18 @@ func init() {
 	beego.Router("/setting", &controllers.SetController{})
 	beego.Router("/setting/registry", &controllers.SetController{},"post:SetRegistry")
 	beego.Router("/setting/k8sui", &controllers.SetController{},"post:SetK8sui")
+
+	//文件管理
+	beego.Router("/filemanage", &controllers.UserController{},"get:FileView")
+	beego.Router("/getpackpath", &controllers.UserController{},"post:GetPackPath")
+
+	//用户管理
+	beego.Router("/usermanage", &controllers.UserController{},"get:UserView")
+	beego.Router("/user/adduser", &controllers.UserController{},"post:AddUser")
+	beego.Router("/user/listuser", &controllers.UserController{},"post:ListUser")
+	beego.Router("/user/disableuser", &controllers.UserController{},"post:DisableUser")
+	beego.Router("/user/enableuser", &controllers.UserController{},"post:EnableUser")
+	beego.Router("/user/getuserright", &controllers.UserController{},"post:GetUserRight")
+	beego.Router("/user/setuserright", &controllers.UserController{},"post:SetUserRight")
+
 }

@@ -2,13 +2,23 @@ package entity
 
 import (
 	"errors"
+	"flag"
+	"github.com/YoungChou93/pack/client"
 	"github.com/astaxie/beego"
 	"k8s.io/api/core/v1"
-	"flag"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/kubernetes"
-	 "github.com/YoungChou93/pack/client"
+	"k8s.io/client-go/tools/clientcmd"
 )
+
+type TreeNode struct {
+	Id    int    `json:"id"`
+	Text  string `json:"text"`
+	State State  `json:"state"`
+}
+
+type State struct {
+	Selected bool `json:"selected"`
+}
 
 //k8sui地址
 type K8sui struct {
@@ -25,24 +35,9 @@ func (this *K8sui) GetIpPort() string {
 	return this.Ipaddr + ":" + this.Port
 }
 
-//构造镜像仓库镜像格式
-type RepositoriesInfo struct {
-	Repositories []string
-}
-
-type Image struct {
-	Name string
-	Tags []string
-}
-
-type RegistryImage struct{
-	Images []Image
-}
-
-
 type Result struct {
 	Success bool
-	Reason string
+	Reason  string
 }
 
 //仿真成员
@@ -56,21 +51,21 @@ type TaskMember struct {
 	TargetPort    int32
 	NodePort      int32
 	Env           []v1.EnvVar
+	Cmd           []string
 	Service       *v1.Service
 	Rc            *v1.ReplicationController
 	Pod           *v1.Pod
 }
 
-func (this *TaskMember) GetK8sApp(taskname string)client.K8sApp {
-	 app:=client.K8sApp{TaskName:taskname,Name:this.Name,Namespace:this.Namespace,
-	Image:this.Image,InstanceCount:this.InstanceCount,Port:this.Port,
-	TargetPort:this.TargetPort,NodePort:this.NodePort,Types:this.Types}
-	if len(this.Env)>0{
-		app.Env=this.Env
+func (this *TaskMember) GetK8sApp(taskname string) client.K8sApp {
+	app := client.K8sApp{TaskName: taskname, Name: this.Name, Namespace: this.Namespace,
+		Image: this.Image, InstanceCount: this.InstanceCount, Port: this.Port,
+		TargetPort: this.TargetPort, NodePort: this.NodePort, Cmd: this.Cmd, Types: this.Types}
+	if len(this.Env) > 0 {
+		app.Env = this.Env
 	}
 	return app
 }
-
 
 //仿真任务
 type Task struct {
@@ -89,27 +84,24 @@ func (this *Task) AddTaskMember(member TaskMember) {
 	this.Members = append(this.Members, member)
 }
 
-func (this *Task) RemoveTaskMember(name string) (TaskMember,error){
-	index:=-1
-	for i,member:= range this.Members{
-		if member.Name==name{
-			index=i
+func (this *Task) RemoveTaskMember(name string) (TaskMember, error) {
+	index := -1
+	for i, member := range this.Members {
+		if member.Name == name {
+			index = i
 		}
 	}
-	if index!=-1{
-		taskMember:=this.Members[index]
-		if len(this.Members)==1{
+	if index != -1 {
+		taskMember := this.Members[index]
+		if len(this.Members) == 1 {
 			this.Members = make([]TaskMember, 0)
-		}else {
+		} else {
 			this.Members = append(this.Members[:index], this.Members[index+1:]...)
 		}
-		return taskMember,nil
+		return taskMember, nil
 	}
-	return TaskMember{},errors.New("error name")
+	return TaskMember{}, errors.New("error name")
 }
-
-
-
 
 var App Application
 
@@ -117,7 +109,7 @@ var Newk8sui K8sui
 
 func Setting() {
 
-    client.RegistrySetting()
+	client.RegistrySetting()
 	Newk8sui = K8sui{beego.AppConfig.String("k8sip"), beego.AppConfig.String("k8sport"), beego.AppConfig.String("k8sroute")}
 	kubeconfig := flag.String("kubeconfig", "./config", "absolute path to the kubeconfig file")
 	flag.Parse()
@@ -131,7 +123,7 @@ func Setting() {
 		panic(err.Error())
 	}
 
-	kclient:=client.KubernetesClient{K8sclient}
+	kclient := client.KubernetesClient{K8sclient}
 
 	App = NewApplication(kclient)
 
