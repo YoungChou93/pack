@@ -29,26 +29,14 @@
         width:150px;
     }
 
-    /*.panel-primary>.panel-heading {
-        color: #fff;
-        background-color: #63BDE8;
-        border-color: #63BDE8;
-    }
-
-    .panel-primary {
-        border-color: #63BDE8;
-    }*/
-
 </style>
 <script type="text/javascript">
     $(function() {
 
         $.post("/localimage/list", function (result) {
             $.each(result, function (index, element) {
-                if(element.RepoTags!=null){
-                    var optionStr = "<option>" + element.RepoTags[0] + "</option>";
+                    var optionStr = "<option>" + element.Name + "</option>";
                     $("#images").append(optionStr)
-                }
             });
         }, "json");
 
@@ -107,13 +95,14 @@
             },
             success: function (data) {
                 if (data.Success) {
-                    $('#waitDialog').modal('hide');
-                    alert("封装成功！");
-                    $("#imagename").val("");
-                    $("#version").val("");
-                    $("#commands").val("");
+                    $("#waitDialogBody").empty();
+                    var optionStr = "<p>成功</p>";
+                    $("#waitDialogBody").append(optionStr);
+                    setTimeout(function () {
+                        $('#waitDialog').modal('hide');
+                    },1000);
                 } else {
-                    alert("封装成功！"+data.Reason);
+                    alert("封装失败！"+data.Reason);
                 }
 
             }
@@ -126,7 +115,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="panel panel-primary">
-            <div class="panel-heading"><h4>封装</h4></div>
+            <div class="panel-heading"><h4 style="margin:0;">封装</h4></div>
             <form class="form-horizontal" action="/encapsulation" method="post" id="uploadform" enctype="multipart/form-data">
             <table class=" table-hover table-condensed text-center">
                 <tr>

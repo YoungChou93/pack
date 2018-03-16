@@ -40,7 +40,8 @@ type Result struct {
 	Reason  string
 }
 
-//仿真成员
+
+//仿真成员 或者 工具 或者 模型
 type TaskMember struct {
 	Name          string
 	Namespace     string
@@ -126,5 +127,6 @@ func Setting() {
 	kclient := client.KubernetesClient{K8sclient}
 
 	App = NewApplication(kclient)
+	App.Read()
 
 }

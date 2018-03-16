@@ -37,6 +37,13 @@
 
 </style>
 <script type="text/javascript">
+
+    var itemindex=-1;
+    var items;
+    var currentpage=1;
+    var pagerow=10;
+
+
     var task={{ .task}};
 
     var envarray=[];
@@ -44,14 +51,26 @@
     $(function() {
         list();
 
-        $.post("/registry/list", function (result) {
-            result=result.Images;
-            $.each(result, function (index, element) {
-                $.each(element.Tags, function (index, e) {
-                    var optionStr = "<option>" + element.Name +":"+e + "</option>";
-                    $("#image").append(optionStr)
-                });
+        $("#pageadd").click(function () {
+            if(currentpage*pagerow<items.length){
+                currentpage++;
+                $("#pagenumber").text(currentpage);
+                show();
+            }
+        });
 
+        $("#pagesub").click(function () {
+            if(currentpage>1){
+                currentpage--;
+                $("#pagenumber").text(currentpage);
+                show();
+            }
+        });
+
+        $.post("/registry/list", function (result) {
+            $.each(result, function (index, element) {
+                    var optionStr = "<option>" + element.Name +":"+element.Tag + "</option>";
+                    $("#image").append(optionStr)
             });
         }, "json");
 
@@ -83,6 +102,49 @@
 
     });
 
+    function list() {
+        $.post("/simulation/onetask", {
+            name:task.Name,
+            namespace:task.Namespace,
+        },function (result) {
+            if (result != null) {
+                task = result;
+                items=result.Members;
+                firstList();
+            }
+
+        }, "json");
+    }
+
+    function firstList() {
+        var totalpage=Math.ceil(items.length/pagerow);
+        $("#totalpage").text("共"+totalpage+"页");
+        show();
+
+    }
+
+    function show() {
+        var i=(currentpage-1)*pagerow;
+        var max=i+pagerow;
+        $("#tablebody").empty();
+        for(;i<max;i++){
+            var number=i+1;
+            var optionStr = "<tr><td>" + number +
+                "</td><td>" + items[i].Name +
+                "</td><td>" + formatService( items[i])+
+                "</td><td>" +  items[i].Port+
+                "</td><td>" +  formatType(items[i].Types)+
+                "</td><td>" +  items[i].Pod.status.phase+
+                "</td><td style='width:150px;'><button  class='btn btn-info' onclick='getLog("+i+")'><span class='glyphicon glyphicon-list-alt'></span></button>"+
+                "<button  class='btn btn-danger'  style='margin-left: 5px;' onclick='preRemove("+i+")'><span class='glyphicon glyphicon-trash'></span></button>"+
+                formatMember(items[i],i)+
+                "</td></tr>";
+            $("#tablebody").append(optionStr);
+        }
+    }
+
+
+
     function envObject(name,value) {
         this.name=name;
         this.value=value;
@@ -100,32 +162,19 @@
 
     }
 
+    function formatType(type){
+        if(type==1){
+            return "RITG";
+        }else if(type==2){
+            return "SSH成员";
+        }else if(type==3){
+            return "普通成员";
+        }else if(type==4){
+            return "VNC成员";
+        }
 
-    function list() {
-        $.post("/simulation/onetask", {
-            name:task.Name,
-            namespace:task.Namespace,
-        },function (result) {
-            if (result != null) {
-            task = result;
-            var number = 1;
-            $("#apps").empty();
-            $.each(result.Members, function (index, element) {
-                var optionStr = "<tr><td style='width:80px;text-align: center;vertical-align:middle;'>" + number +
-                    "</td><td style='width:80px;text-align: center;vertical-align:middle;'>" + element.Name +
-                    "</td><td style='width:120px;text-align: center;vertical-align:middle;'>" + formatService(element)+
-                    "</td><td style='width:80px;text-align: center;vertical-align:middle;'>" + element.Port+
-                    "</td><td style='text-align: center;vertical-align:middle;'>" + element.Pod.status.phase+
-                    "</td><td style='width:150px;'><button  class='btn btn-info' onclick='getLog("+index+")'><span class='glyphicon glyphicon-list-alt'></span></button>"+
-                    "<button  class='btn btn-danger'  style='margin-left: 5px;' onclick='preRemove("+index+")'><span class='glyphicon glyphicon-remove'></span></button>"+
-                    formatMember(element,index)+
-                "</td></tr>";
-                $("#apps").append(optionStr)
-                number++;
-            });
-            }
-        }, "json");
     }
+
 
     function formatMember(element,index){
         if(element.Types==2 || element.Types==4) {
@@ -145,17 +194,9 @@
 
 
     function openSSH(index){
-        $("#ssha").remove();
         $("#sshbody").append("<a id='ssha' href='"+"https://"+task.Members[index].Pod.status.hostIP+":"+task.Members[index].Service.spec.ports[0].nodePort+"/vnc.html"+"' style='display: none' target='_blank'></a>");
         document.getElementById("ssha").click();
-        //$("#ssh").show();
-
     }
-
-    function closeSSH(){
-        $("#ssh").hide();
-    }
-
 
     var map;
     var pods;
@@ -251,27 +292,57 @@ function addApp() {
 
 </script>
 <body>
+<div style="width: 100%;padding:5px;">
+    <button type="button" onclick="addApp()" class="btn btn-primary"><i class="glyphicon glyphicon-plus"></i>创建</button>
+    <button type="button" onclick="list()" class="btn btn-success"><i class="glyphicon glyphicon-refresh"></i>刷新</button>
+</div>
 <div class="container-fluid">
     <div class="row">
         <div class="panel panel-primary" style="max-height: 50%;">
-            <div class="panel-heading"><h4>{{ .task.Name}}<span class="glyphicon glyphicon-plus" onclick="addApp()" style="float:right;margin-left: 10px;"></span>
-                <span class="glyphicon glyphicon-refresh" onclick="list()" style="float:right"></span></h4> </div>
+            <div class="panel-heading"><h4>{{ .task.Name}}</span></h4> </div>
             <table class="table table-hover table-condensed table-striped" id="apps">
+                <thead>
+                <tr>
+                    <th>编号</th>
+                    <th>成员名称</th>
+                    <th>内部IP</th>
+                    <th>内部端口</th>
+                    <th>类型</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody id="tablebody">
 
+                </tbody>
             </table>
-
-    </div>
-        <div class="panel panel-primary"  style="height: 500px;bottom:0px;display: none; " id="ssh">
-            <div class="panel-heading"><h4>SSH&nbsp;&nbsp;user:guest&nbsp;password:123456<span class="glyphicon glyphicon-remove" onclick="closeSSH()" style="float:right;margin-left: 10px;"></span></h4></div>
-            <div id="sshbody" style="height:480px;width:100%;">
-                <iframe name="sshcontent" frameborder="no" border="0" style="height:100%;width:100%;padding-bottom: 25px;">
-                </iframe>
-            </div>
-
         </div>
+        <div id="sshbody" style="display: none"></div>
     </div>
 </div>
+    <div class="footer">
+        <nav aria-label="...">
+            <ul class="pagination" style="margin: 0px;">
+                <li >
+                <span>
+                    <span id="pagesub" aria-hidden="true">上一页</span>
+                </span>
+                </li>
+                <li>
+                    <span id="pagenumber">1 <span class="sr-only">(current)</span></span>
+                </li>
 
+                <li>
+                <span>
+                    <span id="pageadd" aria-hidden="true">下一页</span>
+                </span>
+                </li>
+                <li>
+                    <span id="totalpage">1 </span>
+                </li>
+            </ul>
+        </nav>
+    </div>
 <div class="modal fade" tabindex="-1" role="dialog" id="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">

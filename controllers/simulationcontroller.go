@@ -11,13 +11,8 @@ import (
 	"io"
 	"strings"
 	"github.com/YoungChou93/pack/client"
+	"github.com/YoungChou93/pack/database"
 )
-
-var NAMESPACE string
-
-func init()  {
-	NAMESPACE="default"
-}
 
 
 type SimulationController struct {
@@ -28,19 +23,29 @@ func (c *SimulationController) TasksView() {
 	c.TplName = "tasks.html"
 }
 
+func (c *SimulationController) ToolView() {
+	c.TplName = "develop.html"
+}
+
 func (c *SimulationController) TaskView() {
-	namespace := c.GetString("namespace")
+	//namespace := c.GetString("namespace")
+	user:=c.GetSession("user").(database.User)
+	namespace :=user.Username
+
 	name := c.GetString("name")
-	task:=entity.App.GetTask(namespace,name)
+	task,_:=entity.App.GetTask(namespace,name)
 	c.TplName = "task.html"
 	c.Data["task"]=task
 }
 
 func (c *SimulationController) OneTask() {
-	namespace := c.GetString("namespace")
+	//namespace := c.GetString("namespace")
+	user:=c.GetSession("user").(database.User)
+	namespace :=user.Username
+
 	name := c.GetString("name")
 
-	task:=entity.App.GetTask(namespace,name)
+	task,_:=entity.App.GetTask(namespace,name)
 
 	c.Data["json"]=task
 	c.ServeJSON()
@@ -48,34 +53,53 @@ func (c *SimulationController) OneTask() {
 
 
 func (c *SimulationController) ListTask() {
-	namespace := NAMESPACE
+	//namespace := c.GetString("namespace")
+	user:=c.GetSession("user").(database.User)
+	namespace :=user.Username
 	tasks,_:=entity.App.GetTasks(namespace)
 	c.Data["json"] = &tasks
 	c.ServeJSON()
 }
 
 func (c *SimulationController) AddTask() {
+	//namespace := c.GetString("namespace")
+	user:=c.GetSession("user").(database.User)
+	namespace :=user.Username
+
+
 	name := c.GetString("name")
 	tNow := time.Now()
 	timeNow := tNow.Format("2006-01-02 15:04:05")
 	result := entity.Result{Success:true}
-	err:=entity.App.AddTask(NAMESPACE,entity.NewTask(name,NAMESPACE,timeNow))
-	if err !=nil{
+	if name=="tool"{
 		result.Success=false
-		result.Reason=err.Error()
+		result.Reason="tool 为系统保留名称"
+	}else {
+		err := entity.App.AddTask(namespace, entity.NewTask(name, namespace, timeNow))
+		if err != nil {
+			result.Success = false
+			result.Reason = err.Error()
+			//错误日志
+			beego.Error(err.Error())
+		}
 	}
 	c.Data["json"] = &result
 	c.ServeJSON()
 }
 
 func (c *SimulationController) RemoveTask() {
-	namespace := c.GetString("namespace")
+	//namespace := c.GetString("namespace")
+	user:=c.GetSession("user").(database.User)
+	namespace :=user.Username
+
 	name := c.GetString("name")
 	result := entity.Result{Success:true}
 	err:=entity.App.RemoveTask(namespace,name)
 	if err !=nil{
 		result.Success=false
 		result.Reason=err.Error()
+		//错误日志
+		beego.Error(err.Error())
 	}
 	c.Data["json"] = &result
 	c.ServeJSON()
@@ -100,11 +124,13 @@ func GetEnv(c *SimulationController)[]v1.EnvVar{
 
 //运行仿真成员，也可以叫addTaskMember
 func (c *SimulationController) Run() {
+	//namespace := c.GetString("namespace")
+	user:=c.GetSession("user").(database.User)
+	namespace :=user.Username
 
 	taskname:=c.GetString("taskname")
-	namespace:=c.GetString("namespace")
 
-	task:=entity.App.GetTask(namespace,taskname)
+	task,_:=entity.App.GetTask(namespace,taskname)
 
 	name := c.GetString("name")
 	image := c.GetString("image")
@@ -159,8 +185,8 @@ func (c *SimulationController) Run() {
 	if err !=nil{
 		result.Success=false
 		result.Reason=err.Error()
-	}else {
-
+		//错误日志
+		beego.Error(err.Error())
 	}
 	c.Data["json"] = &result
 	c.ServeJSON()
@@ -168,9 +194,13 @@ func (c *SimulationController) Run() {
 
 
 func (c *SimulationController) RemoveMember() {
+	//namespace := c.GetString("namespace")
+	user:=c.GetSession("user").(database.User)
+	namespace :=user.Username
+
 	name := c.GetString("name")
 	membername := c.GetString("membername")
-	namespace := c.GetString("namespace")
+
 
 	err:=entity.App.RemoveTaskMember(namespace,name,membername)
 
@@ -178,14 +208,20 @@ func (c *SimulationController) RemoveMember() {
 	if err !=nil{
 		result.Success=false
 		result.Reason=err.Error()
+		//错误日志
+		beego.Error(err.Error())
 	}
 	c.Data["json"] = &result
 	c.ServeJSON()
 }
 
 func (c *SimulationController) GetLog() {
+	//namespace := c.GetString("namespace")
+	user:=c.GetSession("user").(database.User)
+	namespace :=user.Username
+
 	name := c.GetString("name")
-	namespace := c.GetString("namespace")
+
 	logs,_:=entity.App.GetLog(namespace,name)
 
 	result := entity.Result{Success:true,Reason:logs}
@@ -194,12 +230,17 @@ func (c *SimulationController) GetLog() {
 }
 
 func (c *SimulationController) UploadFile(){
+	//namespace := c.GetString("namespace")
+	user:=c.GetSession("user").(database.User)
+	namespace :=user.Username
+
+
 	file, header, _ := c.GetFile("fedfile")
 	name:= c.GetString("name")
-	namespace:= c.GetString("namespace")
+
 	nfspath := beego.AppConfig.String("nfspath")
 	result := entity.Result{Success:true}
-	task:=entity.App.GetTask(namespace,name)
+	task,_:=entity.App.GetTask(namespace,name)
 	if len(task.Name)>0 {
 		//保存待封装软件
 		dirpath := nfspath + "/"+task.Namespace+"/"+task.Name
@@ -208,12 +249,16 @@ func (c *SimulationController) UploadFile(){
 		if err != nil {
 			fmt.Println("文件打开失败")
 			result.Reason=err.Error()
+			//错误日志
+			beego.Error(err.Error())
 
 		}
 		_, err = io.Copy(f, file)
 		if err != nil {
 			fmt.Println("文件保存失败" + err.Error())
 			result.Reason=err.Error()
+			//错误日志
+			beego.Error(err.Error())
 
 		}
 
@@ -224,5 +269,43 @@ func (c *SimulationController) UploadFile(){
 	c.Data["json"] = &result
 	c.ServeJSON()
 
+}
 
+func (c *SimulationController) CreateTool(){
+	//namespace := c.GetString("namespace")
+	user:=c.GetSession("user").(database.User)
+	namespace :=user.Username
+	dirpath:=beego.AppConfig.String("nfspath") +user.Username+"/tool"
+	os.MkdirAll(dirpath, os.ModePerm)
+
+
+	name := c.GetString("name")
+	image := c.GetString("image")
+	task,err:=entity.App.GetTask(namespace,"tool")
+	if err!=nil{
+		tNow := time.Now()
+		timeNow := tNow.Format("2006-01-02 15:04:05")
+		entity.App.AddTask(namespace,entity.NewTask("tool",namespace,timeNow))
+		task,_=entity.App.GetTask(namespace,"tool")
+		//错误日志
+		beego.Error(err.Error())
+	}
+	result := entity.Result{Success:true}
+
+	if !strings.Contains(image,client.MajorRegistry.GetIpPort()){
+		image=client.MajorRegistry.GetIpPort()+"/"+image
+	}
+	member:= entity.TaskMember{Name: name, Namespace: namespace, Image: image,Port:8080, InstanceCount: 1, Types:client.TYPE_TOOL,TargetPort:80}
+
+	err=entity.App.AddTaskMember(task, member)
+	if err !=nil{
+		result.Success=false
+		result.Reason=err.Error()
+		//错误日志
+		beego.Error(err.Error())
+	}else {
+
+	}
+	c.Data["json"] = &result
+	c.ServeJSON()
 }

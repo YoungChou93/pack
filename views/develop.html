@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <script type="text/javascript"
+            src="/static/bootstrap/js/jquery-2.2.1.min.js"></script>
+    <link rel="stylesheet"
+          href="/static/bootstrap/css/bootstrap.min.css">
+    <script type="text/javascript"
+            src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <title>开发</title>
+</head>
+<style type="text/css">
+    html,body {
+        background-color: white;
+        font-family: 微软雅黑;
+        width: 100%;
+        background-color: #bbccdd;
+    }
+
+    h4{
+        margin: 2px;
+    }
+
+    table{
+        width:100%;
+        font-family: 微软雅黑;
+        font-size:16px;
+    }
+    .td1{
+        text-align: right;
+        width:100px;
+    }
+    .td2{
+        vertical-align:middle;
+    }
+
+</style>
+<script type="text/javascript">
+    var task=null;
+    var itemindex=-1;
+    var items;
+    var currentpage=1;
+    var pagerow=10;
+    var url;
+    var map;
+    $(function() {
+        list();
+
+        $("#pageadd").click(function () {
+            if(currentpage*pagerow<items.length){
+                currentpage++;
+                $("#pagenumber").text(currentpage);
+                show();
+            }
+        });
+
+        $("#pagesub").click(function () {
+            if(currentpage>1){
+                currentpage--;
+                $("#pagenumber").text(currentpage);
+                show();
+            }
+        });
+
+        $.post("/registry/list", function (result) {
+            $.each(result, function (index, element) {
+                var optionStr = "<option>" + element.Name +":"+element.Tag + "</option>";
+                $("#image").append(optionStr)
+            });
+        }, "json");
+
+    });
+
+    function list() {
+        $.post("/simulation/onetask", {
+            name:"tool",
+            namespace:"default",
+        },function (result) {
+            if (result != null) {
+                task = result;
+                items=result.Members;
+                firstList();
+            }
+
+        }, "json");
+    }
+
+    function firstList() {
+        var totalpage=Math.ceil(items.length/pagerow);
+        $("#totalpage").text("共"+totalpage+"页");
+        show();
+
+    }
+
+
+    function show() {
+        var i=(currentpage-1)*pagerow;
+        var max=i+pagerow;
+        $("#tablebody").empty();
+        for(;i<max;i++){
+            var number=i+1;
+            var optionStr = "<tr><td>" + number +
+                "</td><td>" + items[i].Name +
+                "</td><td>" + formatService( items[i])+
+                "</td><td>" +  items[i].Pod.status.phase+
+                "</td><td style='width:150px;'><button  class='btn btn-info' onclick='getLog("+i+")'><span class='glyphicon glyphicon-list-alt'></span></button>"+
+                "<button  class='btn btn-danger'  style='margin-left: 5px;' onclick='preRemove("+i+")'><span class='glyphicon glyphicon-trash'></span></button>"+
+                formatMember(items[i],i)+
+                "</td></tr>";
+            $("#tablebody").append(optionStr);
+        }
+    }
+
+    function openSSH(index){
+        $("#sshbody").append("<a id='ssha' href='"+"http://"+task.Members[index].Pod.status.hostIP+":"+task.Members[index].Service.spec.ports[0].nodePort+"' style='display: none' target='_blank'></a>");
+        document.getElementById("ssha").click();
+    }
+    function formatMember(element,index){
+        if(element.Types==5 || element.Types==4) {
+            return "<button  class='btn btn-success' style='margin-left: 5px;' onclick='openSSH("+index+")'><span class='glyphicon glyphicon-link'></span></button>";
+        }else{
+            return "";
+        }
+    }
+
+    function formatService(element){
+        if(element.Service!=null) {
+            return element.Service.spec.clusterIP;
+        }else{
+            return "-";
+        }
+    }
+
+    var suremap;
+    function preRemove(index) {
+        $("#suredialogBody").empty();
+        var optionStr ="<p>确定要将<font color='red'>"+items[index].Name+"</font>删除吗?</p>";
+        $("#suredialogBody").append(optionStr);
+        $('#suredialog').modal('show');
+        suremap={
+            namespace : task.Namespace,
+            name : "tool",
+            membername : items[index].Name
+        };
+    }
+
+    function sureExecute(){
+        $.post("/simulation/removemember", suremap,function (result) {
+            if(result.Success){
+                $('#suredialog').modal('hide');
+                list();
+            }else{
+                alert("删除失败！"+result.Reason);
+            }
+        });
+    }
+
+    function addTool() {
+        envarray=[];
+        $("#name").val("");
+
+        $('#dialog').modal('show');
+    }
+
+    function execute() {
+        map={
+            namespace:"default",
+            name:$("#name").val(),
+            image:$("#image").val(),
+        }
+
+        $.post("/simulation/createtool", map,function (result) {
+            if(result.Success){
+                list();
+            }else{
+                alert("运行错误！"+result.Reason);
+            }
+            $('#dialog').modal('hide');
+
+        });
+    }
+
+    function getLog(index) {
+        $.post("/simulation/log", {
+            name : task.Members[index].Pod.metadata.name,
+            namespace : task.Namespace
+        },function (result) {
+            if(result.Success){
+                $('#logp').empty();
+                $('#logp').append(result.Reason);
+                $('#log').modal('show');
+            }
+
+        });
+
+    }
+</script>
+<body>
+<div style="width: 100%;padding:5px;">
+<button type="button" onclick="addTool()" class="btn btn-primary"><i class="glyphicon glyphicon-plus"></i>创建</button>
+    <a href="/filemanage" target="_self" class="btn btn-warning"><i class="glyphicon glyphicon-file"></i>文件</a>
+</div>
+<div class="container-fluid">
+    <div class="row">
+        <div class="panel panel-primary">
+            <div class="panel-heading"><h4>仿真开发</h4> </div>
+            <table class="table" id="tasks">
+                <thead>
+                <tr>
+                    <th>编号</th>
+                    <th>工具名称</th>
+                    <th>内部IP</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody id="tablebody">
+
+                </tbody>
+            </table>
+        </div>
+        <div id="sshbody" style="display: none"></div>
+    </div>
+</div>
+<div class="footer">
+    <nav aria-label="...">
+        <ul class="pagination" style="margin: 0px;">
+            <li >
+                <span>
+                    <span id="pagesub" aria-hidden="true">上一页</span>
+                </span>
+            </li>
+            <li>
+                <span id="pagenumber">1 <span class="sr-only">(current)</span></span>
+            </li>
+
+            <li>
+                <span>
+                    <span id="pageadd" aria-hidden="true">下一页</span>
+                </span>
+            </li>
+            <li>
+                <span id="totalpage">1 </span>
+            </li>
+        </ul>
+    </nav>
+</div>
+
+<div class="modal fade" tabindex="-1" role="dialog" id="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">启动</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal">
+                    <table class=" table-hover table-condensed text-center">
+                        <tr>
+                            <td class="td1">
+                                <label class="h4">名称：</label>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control" id="name" name="name"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="td1">
+                                <label class="h4">镜像：</label>
+                            </td>
+                            <td>
+                                <select id="image" class="form-control" name="image">
+                                </select>
+                            </td>
+                        </tr>
+                    </table>
+                </form>
+
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="execute()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade" tabindex="-1" role="dialog" id="suredialog">
+<div class="modal-dialog" role="document">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">系统提示</h4>
+        </div>
+        <div class="modal-body" id="suredialogBody">
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="sureExecute()">确定</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+        </div>
+    </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<div class="modal fade" tabindex="-1" role="dialog" id="log">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">日志</h4>
+            </div>
+            <div class="modal-body" style="background-color: black;max-height: 500px;overflow:auto;">
+                <p id="logp" style="color:white;white-space: pre;"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<form method='post' style="display: none" id="form"></form>
+
+
+
+</body>
+</html>

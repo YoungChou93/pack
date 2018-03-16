@@ -4,7 +4,9 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/YoungChou93/pack/entity"
 	"github.com/YoungChou93/pack/client"
+	"github.com/YoungChou93/pack/database"
 )
+
 
 type IndexController struct {
 	beego.Controller
@@ -12,7 +14,15 @@ type IndexController struct {
 
 func (c *IndexController) Get() {
 	c.TplName = "index.html"
-	c.Data["k8s"]=entity.Newk8sui.GetUrl()
+	user:=c.GetSession("user").(database.User)
+
+	var rights []*database.Right
+
+	database.Dao.Raw("select * from `right` where id  in (select rid from rightusermap where uid = ?)",user.Id).QueryRows(&rights)
+
+	c.Data["rights"]=rights
+	c.Data["user"] = "欢迎您！" + user.Username
+
 }
 
 
@@ -24,22 +34,6 @@ func (c *SetController) Get() {
 	c.TplName = "setting.html"
 	c.Data["registry"]=&client.MajorRegistry
 	c.Data["k8sui"]=&entity.Newk8sui
-}
-
-func (c *SetController) SetRegistry() {
-	ipaddr := c.GetString("ipaddr")
-	port := c.GetString("port")
-	version := c.GetString("version")
-
-	result:=entity.Result{}
-
-	client.MajorRegistry.Ipaddr=ipaddr
-	client.MajorRegistry.Port=port
-	client.MajorRegistry.Version=version
-
-	result.Success=true
-	c.Data["json"] = &result
-	c.ServeJSON()
 }
 
 func (c *SetController) SetK8sui() {

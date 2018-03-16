@@ -6,7 +6,21 @@ import (
 	"io"
 	"compress/gzip"
 	"path"
+
+	"github.com/jhoonb/archivex"
 )
+
+
+func CreateTar(filesource string) error {
+	tar := new(archivex.TarFile)
+	tar.Create(filesource)
+	err:=tar.AddAll(filesource, true)
+	defer tar.Close()
+
+	return err
+}
+
+
 
 func Untar(source string,targetdir string)error{
 	srcFile, err := os.Open(source)

@@ -9,6 +9,7 @@ import (
 	myclient "github.com/YoungChou93/pack/client"
 	"strconv"
 	"time"
+	"github.com/docker/docker/api/types/container"
 )
 
 type ListImageController struct {
@@ -21,12 +22,17 @@ func (c *ListImageController) Get() {
 
 func (c *ListImageController) List() {
 	cli, err := client.NewEnvClient()
+	defer cli.Close()
 	if err != nil {
+		//错误日志
+		beego.Error(err.Error())
 		panic(err)
 	}
 
 	images, err := cli.ImageList(context.Background(), types.ImageListOptions{})
 	if err != nil {
+		//错误日志
+		beego.Error(err.Error())
 		panic(err)
 	}
 
@@ -49,17 +55,21 @@ func (c *ListImageController) Remove() {
 	result := entity.Result{}
 
 	cli, err := client.NewEnvClient()
+	defer cli.Close()
 	if err != nil {
+		//错误日志
+		beego.Error(err.Error())
 		panic(err)
 	}
 
-	response, err := cli.ImageRemove(context.Background(), imageid, types.ImageRemoveOptions{Force:true,PruneChildren:true})
+	_, err = cli.ImageRemove(context.Background(), imageid, types.ImageRemoveOptions{Force:true,PruneChildren:true})
 
-	println(response)
 
 	if err != nil {
 		result.Success = false
 		result.Reason = err.Error()
+		//错误日志
+		beego.Error(err.Error())
 	} else {
 
 		result.Success = true
@@ -68,3 +78,65 @@ func (c *ListImageController) Remove() {
 	c.ServeJSON()
 }
 
+func (c *ListImageController) Run() {
+	imagename := c.GetString("imagename")
+
+	result := entity.Result{Success:true}
+
+	cli, err := client.NewEnvClient()
+	defer cli.Close()
+	if err != nil {
+		//错误日志
+		beego.Error(err.Error())
+		panic(err)
+	}
+
+	resp, err := cli.ContainerCreate(context.Background(), &container.Config{
+		Image: imagename,
+	}, nil, nil, "")
+	if err != nil {
+		//错误日志
+		beego.Error(err.Error())
+		result.Success = false
+		result.Reason = err.Error()
+	}else {
+		if err := cli.ContainerStart(context.Background(), resp.ID, types.ContainerStartOptions{}); err != nil {
+			//错误日志
+			beego.Error(err.Error())
+			result.Success = false
+			result.Reason = err.Error()
+		}else {
+			if err := cli.ContainerStop(context.Background(), resp.ID, nil); err != nil {
+				//错误日志
+				beego.Error(err.Error())
+				result.Success = false
+				result.Reason = err.Error()
+			}else{
+				if err := cli.ContainerRemove(context.Background(), resp.ID, types.ContainerRemoveOptions{}); err != nil {
+					//错误日志
+					beego.Error(err.Error())
+					result.Success = false
+					result.Reason = err.Error()
+				}
+			}
+		}
+	}
+	c.Data["json"] = &result
+	c.ServeJSON()
+}
+
+func (c *ListImageController) ListContainer() {
+	cli, err := client.NewEnvClient()
+	if err != nil {
+		panic(err)
+	}
+
+	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	c.Data["json"] = &containers
+	c.ServeJSON()
+
+}

@@ -56,13 +56,15 @@ func (c *UploadController) Encapsulation() {
 		f, err := os.OpenFile(dirpath+delimiter+header.Filename, os.O_CREATE|os.O_RDWR, 0777)
 		if err != nil {
 			fmt.Println("文件打开失败")
-			c.Abort("fail")
+			//错误日志
+			beego.Error(err.Error())
 		}
 
 		_, err = io.Copy(f, software)
 		if err != nil {
 			fmt.Println("文件保存失败" + err.Error())
-			c.Abort("fail")
+			//错误日志
+			beego.Error(err.Error())
 		}
 
 		f.Close()
@@ -110,20 +112,25 @@ func (c *UploadController) Encapsulation() {
 	defer dockerBuildContext.Close()
 	defaultHeaders := map[string]string{"Content-Type": "application/tar"}
 	cli, _ := client.NewClient("unix:///var/run/docker.sock", beego.AppConfig.String("dockerversion"), nil, defaultHeaders)
+	defer cli.Close()
 	options := types.ImageBuildOptions{
 		SuppressOutput: true,
 		Remove:         true,
 		ForceRemove:    true,
 		Tags:           []string{imagename + ":" + version}}
 	buildResponse, err := cli.ImageBuild(context.Background(), dockerBuildContext, options)
-	//defer buildResponse.Body.Close()
+	defer buildResponse.Body.Close()
 	if err != nil {
 		fmt.Printf("%s", err.Error())
+		//错误日志
+		beego.Error(err.Error())
 	}
 	fmt.Printf("********* %s **********", buildResponse.OSType)
 	response, err := ioutil.ReadAll(buildResponse.Body)
 	if err != nil {
 		fmt.Printf("%s", err.Error())
+		//错误日志
+		beego.Error(err.Error())
 	}
 	fmt.Println(string(response))
 	results:=string(response)

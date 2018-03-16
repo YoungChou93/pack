@@ -107,7 +107,8 @@
                 "<td>"+items[i].Size+"</td>" +
                 "<td>"+items[i].Id+"</td>" +
                 "<td>"+items[i].Created+"</td>" +
-                "<td style='width:100px;'><button  class='btn btn-danger' onclick='preRemove("+i+")'><span class='glyphicon glyphicon-trash'></span></button>" +
+                "<td style='width:150px;'><button  class='btn btn-danger' onclick='preRemove("+i+")'><span class='glyphicon glyphicon-trash'></span></button>" +
+                "<button  class='btn btn-warning' style='margin-left: 5px;' onclick='preRun("+i+")'><span class='glyphicon glyphicon-play'></span></button>" +
                 "<button  class='btn btn-info' style='margin-left: 5px;' onclick='prePush("+i+")'><span class='glyphicon glyphicon-arrow-up'></span></button></td>"+
                 "</tr>";
             $("#tablebody").append(optionStr);
@@ -154,9 +155,24 @@
         };
     }
 
+    function preRun(index){
+        itemindex=index;
+        $("#dialogBody").empty();
+        var optionStr ="<p>确定要启动容器测试吗?</p>";
+        $("#dialogBody").append(optionStr);
+        $('#dialog').modal('show');
+        url="/localimage/run";
+        map={
+            imagename : items[itemindex].Name
+        };
+    }
+
+
+
     function execute(){
         $('#dialog').modal('hide');
         $('#pushdialog').modal('hide');
+        $('#rundialog').modal('hide');
         $("#waitDialogBody").empty();
         var optionStr ="<p>等待中……</p>";
         $("#waitDialogBody").append(optionStr);
@@ -168,7 +184,7 @@
                 $("#waitDialogBody").append(optionStr);
                 setTimeout(function () {
                     $('#waitDialog').modal('hide');
-                },1000);
+                },2000);
             }else{
                 $("#waitDialogBody").empty();
                 var optionStr ="<p>失败,"+result.Reason+"</p>";
@@ -287,5 +303,6 @@
             </div><!-- /.modal-content -->
         </div><!-- /.modal-dialog -->
     </div>
+
 </body>
 </html>

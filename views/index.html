@@ -131,69 +131,23 @@
     </script>
 </head>
 <body>
-<div  style="height:40px;width:100%;background-color: rgba(42,43,41,0.8)">
+<div  style="height:40px;width:100%;background-color: dimgray;">
+    <div style="height: 40px;width:220px;background-color: #204d74;float: left;text-align: center;"><h4 style="color: white;font-size: 16px;">CLOUD SIMULATION</h4></div>
     <span class="glyphicon glyphicon-menu-hamburger" style="font-size:30px;left:10px;top:5px;color:white" onclick="theSwitch()"></span>
+    <h4 style="float:right;color: white;margin-right: 30px;font-size: 15px;">{{ .user}}<a href="/logout" style="color:white;padding-left:5px;">[退出]</a></h4>
 </div>
 <div style="height:100%;width:220px;background-color:#122b40;position: absolute;" id="sidebar">
 
                 <ul class="sidebar-menu list-group " >
+                    {{range .rights}}
                     <li class="list-group-item">
-                        <a href="/encapsulationview" target="content">
+                        <a href="{{ .Righturl}}" target="content">
                             <i class="fa"></i>
-                            <span class="glyphicon glyphicon-plus-sign" aria-hidden="true" style="font-size:18px;color:#122b40;"></span>
-                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">封装镜像</span>
+                            <span class="{{ .Icon}}" aria-hidden="true" style="font-size:18px;color:#122b40;"></span>
+                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">{{ .Rightname}}</span>
                         </a>
                     </li>
-                    <li class="list-group-item">
-                        <a href="/localimage" target="content">
-                            <i class="fa"></i>
-                            <span class="glyphicon glyphicon-modal-window" aria-hidden="true" style="font-size:18px;color:#122b40;"></span>
-                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">本地镜像</span>
-                        </a>
-                    </li>
-                    <li class="list-group-item">
-                        <a href="/registrymanage" target="content">
-                            <i class="fa"></i>
-                            <span class="glyphicon glyphicon-inbox" aria-hidden="true"  style="font-size:18px;color:#122b40;"></span>
-                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">仓库管理</span>
-                        </a>
-                    </li>
-                    <li class="list-group-item">
-                        <a href="/registry" target="content">
-                            <i class="fa"></i>
-                            <span class="glyphicon glyphicon-home" aria-hidden="true"  style="font-size:18px;color:#122b40;"></span>
-                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">仓库镜像</span>
-                        </a>
-                    </li>
-                    <li class="list-group-item">
-                        <a href="/simulation/tasksview" target="content">
-                            <i class="fa"></i>
-                            <span class="glyphicon glyphicon-play" aria-hidden="true"  style="font-size:18px;color:#122b40;"></span>
-                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">仿真任务</span>
-                        </a>
-                    </li>
-                    <li class="list-group-item">
-                        <a href="/filemanage" target="content">
-                            <i class="fa"></i>
-                            <span class="glyphicon glyphicon-folder-close" aria-hidden="true"  style="font-size:18px;color:#122b40;"></span>
-                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">文件管理</span>
-                        </a>
-                    </li>
-                    <li class="list-group-item">
-                        <a href="/usermanage" target="content">
-                            <i class="fa"></i>
-                            <span class="glyphicon glyphicon-user" aria-hidden="true"  style="font-size:18px;color:#122b40;"></span>
-                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">用户管理</span>
-                        </a>
-                    </li>
-                    <li class="list-group-item">
-                        <a href="/setting" target="content">
-                            <i class="fa"></i>
-                            <span class="glyphicon glyphicon-cog" aria-hidden="true"  style="font-size:18px;color:#122b40;"></span>
-                            <span style="margin-left: 5px;font-size:18px;color:#122b40;">设置</span>
-                        </a>
-                    </li>
-
+                    {{end}}
 
                 </ul>
     <div class="kube">
@@ -201,8 +155,7 @@
     </div>
 </div>
 <div class ="main" style="height:100%;width:100%;float: left; padding-top:10px;padding-left:10px;padding-right: 230px;padding-bottom: 20px;margin-left: 220px;background-color: #bbccdd">
-<iframe name="content" frameborder="no" border="0" style="height:100%;width:100%;">
-
+<iframe name="content" frameborder="no" border="0" style="height:100%;width:100%;" src="/static/welcome.html">
 </iframe>
 </div>
 </body>

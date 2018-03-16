@@ -30,17 +30,25 @@ func (c *RegistryController) RegistryView() {
 }
 
 func (c *RegistryController) List() {
-	id, _ := c.GetInt("id")
+	id, err := c.GetInt("id")
 
-	registry := database.Registry{Id: id}
-	database.Dao.Read(&registry)
+	var newRegistry myclient.Registry
 
-	newRegistry := myclient.GetRegistry(registry)
+	if err !=nil{
+
+		newRegistry=myclient.MajorRegistry
+	}else{
+		registry := database.Registry{Id: id}
+		database.Dao.Read(&registry)
+		newRegistry = myclient.GetRegistry(registry)
+	}
 
 	images, err := newRegistry.List()
 
 	if err != nil {
 		fmt.Println(err)
+		//错误日志
+		beego.Error(err.Error())
 	}
 
 	c.Data["json"] = &images
@@ -61,9 +69,12 @@ func (c *RegistryController) Push() {
 
 	ctx := context.Background()
 	cli, err := client.NewEnvClient()
+	defer cli.Close()
 	if err != nil {
 		result.Success = false
 		result.Reason = err.Error()
+		//错误日志
+		beego.Error(err.Error())
 	}
 
 	var newTag string
@@ -97,6 +108,8 @@ func (c *RegistryController) Push() {
 		fmt.Println(err.Error())
 		result.Success = false
 		result.Reason = err.Error()
+		//错误日志
+		beego.Error(err.Error())
 	}
 
 	io.Copy(os.Stdout, out)
@@ -125,6 +138,8 @@ func (c *RegistryController) Pull() {
 		fmt.Println(err.Error())
 		result.Success = false
 		result.Reason = err.Error()
+		//错误日志
+		beego.Error(err.Error())
 	}
 
 	c.Data["json"] = &result
@@ -149,6 +164,8 @@ func (c *RegistryController) AddRegistry() {
 	if err != nil {
 		result.Success = false
 		result.Reason = err.Error()
+		//错误日志
+		beego.Error(err.Error())
 	}
 
 	c.Data["json"] = &result
@@ -162,6 +179,8 @@ func (c *RegistryController) ListRegistry() {
 	_, err := database.Dao.QueryTable("registry").All(&registries)
 	if err != nil {
 		fmt.Println(err)
+		//错误日志
+		beego.Error(err.Error())
 	}
 
 	c.Data["json"] = &registries
@@ -178,6 +197,8 @@ func (c *RegistryController) MajorRegistry() {
 	if err != nil {
 		result.Success = false
 		result.Reason = err.Error()
+		//错误日志
+		beego.Error(err.Error())
 	} else {
 		_, err := database.Dao.QueryTable("registry").Filter("major", 1).Update(orm.Params{"major": 0})
 		registry.Major = 1
@@ -185,6 +206,8 @@ func (c *RegistryController) MajorRegistry() {
 		if err != nil {
 			result.Success = false
 			result.Reason = err.Error()
+			//错误日志
+			beego.Error(err.Error())
 		} else {
 			myclient.MajorRegistry = myclient.GetRegistry(registry)
 		}
@@ -204,6 +227,8 @@ func (c *RegistryController) DeleteRegistry() {
 	if err != nil {
 		result.Success = false
 		result.Reason = err.Error()
+		//错误日志
+		beego.Error(err.Error())
 	}
 
 	c.Data["json"] = &result

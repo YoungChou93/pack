@@ -31,6 +31,17 @@ type Rightusermap struct{
 	Uid int
 }
 
+
+
+type Taskmember struct {
+	Id int
+	Name string
+	Taskname string
+	Tasktime string
+	Namespace string
+	Types int
+}
+
 func init(){
-	orm.RegisterModel(new(User),new(Registry),new(Right),new(Rightusermap))
+	orm.RegisterModel(new(User),new(Registry),new(Right),new(Rightusermap),new(Taskmember))
 }

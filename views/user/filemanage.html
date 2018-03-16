@@ -20,16 +20,169 @@
 <script type="text/javascript">
 
     $(function() {
+        list();
+    });
 
-        $.post("/getpackpath", function (result) {
+
+    function list(){
+        $.post("/getpath", function (result) {
 
             $('#tree').treeview({data:result});
         }, "json");
-    });
+    }
+
+
+    function upload() {
+        var node=$('#tree').treeview('getSelected');
+        if(node==null || node.length<1){
+            alert("请选中一个目录");
+            return false;
+        }
+
+
+        if(node[0].isfile){
+            alert("选中的为文件，不能执行上传操作")
+            return false;
+        }
+
+
+        $('#fileDialog').modal('show');
+
+
+    }
+
+
+    function exectue() {
+        var node=$('#tree').treeview('getSelected');
+        var form=document.getElementById("fileForm");
+        var fd =new FormData(form);
+        fd.append("path",node[0].path);
+
+        $.ajax({
+            url: "/file/uploadfile",
+            type: 'POST',
+            cache: false,
+            data: fd,
+            processData: false,
+            contentType: false,
+            dataType: "json",
+            success: function (data) {
+                if (data.Success) {
+                    $('#fileDialog').modal('hide');
+                    list();
+                } else {
+                    alert("上传失败！"+data.Reason);
+                }
+
+            }
+        });
+    }
+
+    function download(){
+        var node=$('#tree').treeview('getSelected');
+        if(node==null || node.length<1){
+            alert("请选中一个目录");
+            return false;
+        }
+
+        if (node[0].isfile){
+            alert("请以文件夹为单位下载");
+            return false;
+        }
+
+        $("#download").attr("src", '/file/download?path=' + node[0].path);
+    }
+
+
+    function deletefile() {
+
+        var node=$('#tree').treeview('getSelected');
+        if(node==null || node.length<1){
+            alert("请选中一个目录或文件");
+            return false;
+        }
+
+        if(node[0].isroot){
+            alert("根目录无法删除！");
+            return false;
+        }
+
+
+        $('#suredialog').modal('show');
+
+    }
+
+    function executedelete(){
+        var node=$('#tree').treeview('getSelected');
+        $.post("/file/deletefile",{
+            path : node[0].path
+        }, function (data) {
+            $('#suredialog').modal('hide');
+            if (data.Success) {
+                list();
+            } else {
+                alert("删除失败！"+data.Reason);
+            }
+
+        }, "json");
+    }
 
 
 </script>
 <body>
+<div style="width: 100%;padding:5px;">
+    <button type="button" onclick="upload()" class="btn btn-primary"><i class="glyphicon glyphicon-upload"></i>上传</button>
+    <button type="button" onclick="download()" class="btn btn-success"><i class="glyphicon glyphicon-download-alt"></i>下载</button>
+    <button type="button" onclick="deletefile()" class="btn btn-danger"><i class="glyphicon glyphicon-trash"></i>删除</button>
+</div>
 <div id="tree"></div>
+<div class="modal fade" tabindex="-1" role="dialog" id="fileDialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">上传文件</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal" enctype="multipart/form-data" id="fileForm">
+                    <table class=" table-hover table-condensed text-center">
+                        <tr>
+                            <td class="td1">
+                                <label class="h4">文件：</label>
+                            </td>
+                            <td>
+                                <input type="file" class="form-control" id="file" name="file" />
+                            </td>
+                        </tr>
+                    </table>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="exectue()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div class="modal fade" tabindex="-1" role="dialog" id="suredialog">
+    <div class="modal-dialog modal-sm" role="document" >
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">系统提示</h4>
+            </div>
+            <div class="modal-body" id="suredialogBody">
+                <p>确定要删除该文件吗？</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="executedelete()">确定</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<iframe id="download" src="" style="display: none"></iframe>
+
 </body>
 </html>

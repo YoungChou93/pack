@@ -77,37 +77,13 @@
 
 </script>
 <body>
+<div style="width: 100%;padding:5px;">
+    <button type="button" onclick="addUser()" class="btn btn-primary"><i class="glyphicon glyphicon-dashboard"></i>k8s-dashboard</button>
+    <button type="button" onclick="addRight()" class="btn btn-warning"><i class="glyphicon glyphicon-signal"></i>Grafana</button>
+</div>
 <div class="container-fluid">
     <div class="row">
-        <div class="panel panel-danger">
-            <div class="panel-heading"><h4>镜像仓库</h4></div>
-            <table class="  table-condensed text-center">
-                <tr>
-                    <td class="td1">
-                        <label class="h4">IP地址：</label>
-                    </td>
-                    <td>
-                        <input type="text" class="form-control" name="ipaddr" value="{{ .registry.Ipaddr}}" id="rip"/>
-                    </td>
-                    <td class="td1">
-                        <label class="h4">端口：</label>
-                    </td>
-                    <td>
-                        <input type="text" class="form-control" name="port" value="{{ .registry.Port}}" id="rport"/>
-                    </td>
-                    <td class="td1">
-                        <label class="h4">版本：</label>
-                    </td>
-                    <td>
-                        <input type="text" class="form-control" name="port" value="{{ .registry.Version}}" id="rversion"/>
-                    </td>
-                    <td>
-                        <button type="submit" class="btn btn-primary" onclick="setRegistry()">确定</button>
-                    </td>
-                </tr>
-            </table>
-    </div>
-        <div class="panel panel-info">
+        <div class="panel panel-primary">
             <div class="panel-heading"><h4>Kubernetes</h4></div>
                 <table class=" table-condensed text-center">
                     <tr>

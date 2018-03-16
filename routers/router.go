@@ -6,9 +6,9 @@ import (
 )
 
 func init() {
+
 	//封装页面
 	beego.Router("/", &controllers.IndexController{})
-    beego.Router("/upload", &controllers.UploadController{})
 	beego.Router("/encapsulationview", &controllers.UploadController{},"get:EncapsulationView")
 	beego.Router("/encapsulation", &controllers.UploadController{},"Post:Encapsulation")
 
@@ -16,6 +16,7 @@ func init() {
 	beego.Router("/localimage", &controllers.ListImageController{})
 	beego.Router("/localimage/list", &controllers.ListImageController{},"post:List")
 	beego.Router("/localimage/remove", &controllers.ListImageController{},"post:Remove")
+	beego.Router("/localimage/run", &controllers.ListImageController{},"post:Run")
 
 	//镜像仓库
 	beego.Router("/registry", &controllers.RegistryController{},)
@@ -44,14 +45,16 @@ func init() {
 	beego.Router("/simulation/log", &controllers.SimulationController{},"post:GetLog")
 	beego.Router("/simulation/removemember", &controllers.SimulationController{},"post:RemoveMember")
 
-    //设置
-	beego.Router("/setting", &controllers.SetController{})
-	beego.Router("/setting/registry", &controllers.SetController{},"post:SetRegistry")
-	beego.Router("/setting/k8sui", &controllers.SetController{},"post:SetK8sui")
+	//仿真开发
+	beego.Router("/simulation/toolview", &controllers.SimulationController{},"get:ToolView")
+	beego.Router("/simulation/createtool", &controllers.SimulationController{},"post:CreateTool")
 
 	//文件管理
-	beego.Router("/filemanage", &controllers.UserController{},"get:FileView")
-	beego.Router("/getpackpath", &controllers.UserController{},"post:GetPackPath")
+	beego.Router("/filemanage", &controllers.FileController{},"get:FileView")
+	beego.Router("/getpath", &controllers.FileController{},"post:GetPath")
+	beego.Router("/file/uploadfile", &controllers.FileController{},"post:UploadFile")
+	beego.Router("/file/deletefile", &controllers.FileController{},"post:DeleteFile")
+	beego.Router("/file/download", &controllers.FileController{},"get:Download")
 
 	//用户管理
 	beego.Router("/usermanage", &controllers.UserController{},"get:UserView")
@@ -61,5 +64,14 @@ func init() {
 	beego.Router("/user/enableuser", &controllers.UserController{},"post:EnableUser")
 	beego.Router("/user/getuserright", &controllers.UserController{},"post:GetUserRight")
 	beego.Router("/user/setuserright", &controllers.UserController{},"post:SetUserRight")
+	beego.Router("/login", &controllers.UserController{},"get:LoginView")
+	beego.Router("/login", &controllers.UserController{},"post:Login")
+	beego.Router("/logout", &controllers.UserController{},"get:Logout")
+	beego.Router("/modifypassword", &controllers.UserController{},"get:ModifyPasswordView")
+	beego.Router("/modifypassword", &controllers.UserController{},"post:ModifyPassword")
+
+	//设置
+	beego.Router("/setting", &controllers.SetController{})
+	beego.Router("/setting/k8sui", &controllers.SetController{},"post:SetK8sui")
 
 }

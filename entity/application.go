@@ -6,6 +6,7 @@ import (
 	"github.com/YoungChou93/pack/client"
 	"errors"
 	"os"
+	"github.com/YoungChou93/pack/database"
 )
 
 type Application struct {
@@ -67,6 +68,7 @@ func (this *Application) RemoveTask(namespace string, name string)(error) {
 					return err
 				}
 			}
+			this.Remove(namespace,name)
 			return nil
 		} else {
 			return errors.New("error namespace")
@@ -87,16 +89,18 @@ func (this *Application) GetTasks(namespace string) ([]Task, error) {
 
 //将list转化为task数组
 func (this *Application) ListToTasks(list *list.List) []Task {
-	i := 0
-	tasks := make([]Task, list.Len())
+	tasks := make([]Task, 0)
 	for e := list.Front(); e != nil; e = e.Next() {
-		tasks[i] = e.Value.(Task)
-		i++
+		t:=e.Value.(Task)
+		if t.Name=="tool"{
+			continue
+		}
+		tasks=append(tasks,t)
 	}
 	return tasks
 }
 
-func (this *Application) GetTask(namespace string, name string) Task {
+func (this *Application) GetTask(namespace string, name string) (Task,error) {
 	key := namespace + "#" + name
 	if e, ok := this.findMap[key]; ok {
 		task := e.Value.(Task)
@@ -106,9 +110,9 @@ func (this *Application) GetTask(namespace string, name string) Task {
 			task.Members[index]=member
 		}
 		this.modifyTask(task)
-		return task
+		return task,nil
 	}
-	return Task{}
+	return Task{},errors.New("error taskname")
 }
 
 func (this *Application) modifyTask(task Task) error {
@@ -148,12 +152,13 @@ func (this *Application) AddTaskMember(task Task,member TaskMember) error{
 	}
 	task.AddTaskMember(member)
 	this.modifyTask(task)
+	this.Save(task.Namespace,task.Name)
 	return nil
 }
 
 func (this *Application) RemoveTaskMember(namespace,name,membername string) error{
 
-	task:=this.GetTask(namespace,name)
+	task,err:=this.GetTask(namespace,name)
 	member,err:=task.RemoveTaskMember(membername)
 	if err !=nil{
 		return err
@@ -173,9 +178,77 @@ func (this *Application) RemoveTaskMember(namespace,name,membername string) erro
 		return err
 	}
 	this.modifyTask(task)
+	this.Save(task.Namespace,task.Name)
 	return nil
 }
 
 func (this *Application) GetLog(namespace string,name string)(string,error){
 	return this.client.ShowLogs(namespace,name)
+}
+
+//保存到数据库
+func (this *Application)Save(namespace string,name string)error{
+	var err error
+	tmds:=make([]database.Taskmember,0)
+	key := namespace + "#" + name
+	if e, ok := this.findMap[key]; ok {
+		task := e.Value.(Task)
+		_,err=database.Dao.QueryTable("taskmember").Filter("namespace",namespace).Filter("taskname",name).Delete()
+			for _,tm:=range task.Members{
+				tmd:=database.Taskmember{}
+				tmd.Name=tm.Name
+				tmd.Namespace=task.Namespace
+				tmd.Taskname=task.Name
+				tmd.Types=tm.Types
+				tmd.Tasktime=task.Time
+				tmds=append(tmds,tmd)
+			}
+		_, err = database.Dao.InsertMulti(len(tmds), tmds)
+	}
+
+
+	return err
+}
+
+//从数据库中移除
+func (this *Application)Remove(namespace string,name string)error{
+	_,err:=database.Dao.QueryTable("taskmember").Filter("namespace",namespace).Filter("taskname",name).Delete()
+	return err
+
+}
+
+
+//从数据库中读取任务信息
+func (this *Application)Read()error{
+	var tmds []*database.Taskmember
+	_,err:=database.Dao.QueryTable("taskmember").All(&tmds)
+	var task Task
+	for _,tmd:=range tmds{
+		task,err=this.GetTask(tmd.Namespace,tmd.Taskname)
+		if err!=nil{
+			task=NewTask(tmd.Taskname,tmd.Namespace,tmd.Tasktime)
+			this.AddTask(task.Namespace,task)
+		}
+
+		pod,err:=this.client.GetPod(tmd.Namespace,tmd.Name)
+		if err==nil && pod!=nil{
+			tm:=TaskMember{}
+			tm.Name=tmd.Name
+			tm.Namespace=tmd.Namespace
+			tm.Types=tmd.Types
+			tm.Pod=pod
+			rc,_:=this.client.GetReplicationController(tmd.Namespace,tmd.Name)
+			tm.Rc=rc
+			if tm.Types!=client.TYPE_FED{
+				svc,_:=this.client.GetService(tmd.Namespace,tmd.Name)
+				tm.Service=svc
+				tm.Port=svc.Spec.Ports[0].Port
+			}
+			task.AddTaskMember(tm)
+			this.modifyTask(task)
+		}
+
+	}
+
+	return err
 }

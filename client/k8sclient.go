@@ -11,9 +11,10 @@ import (
 
 const (
 	TYPE_RTIG  = 1
-	TYPE_FIRST_FED = 2
-	TYPE_OTHER_FED   = 3
+	TYPE_SSH = 2
+	TYPE_FED   = 3
 	TYPE_VNC=4
+	TYPE_TOOL=5
 )
 
 type KubernetesClient struct {
@@ -33,6 +34,28 @@ type K8sApp struct {
 	Cmd           []string
 	Types         int
 }
+
+
+func (this * KubernetesClient)CreateNameSpace(namespace string) error{
+
+	namespace1,err:=this.K8sclient.CoreV1().Namespaces().Get(namespace,metav1.GetOptions{})
+	if err!=nil || namespace1==nil{
+		nc := new(v1.Namespace)
+		nc.TypeMeta = metav1.TypeMeta{Kind: "NameSpace", APIVersion: "v1"}
+
+		nc.ObjectMeta = metav1.ObjectMeta{
+			Name: namespace,
+		}
+
+		nc.Spec = v1.NamespaceSpec{}
+
+		_, err = this.K8sclient.CoreV1().Namespaces().Create(nc)
+		return err
+	}
+	return err
+
+}
+
 
 func (this * KubernetesClient)CreateService(app K8sApp)( *v1.Service, error){
 
@@ -123,61 +146,74 @@ func (this * KubernetesClient)createcontainer(name,image string ,cmd []string,ta
 	return container
 }
 
+func (this * KubernetesClient)createvolume(mountpath,subpath string,pod *v1.Pod)[]v1.VolumeMount{
+	nfsServer:=beego.AppConfig.String("nfsserver")
+	nfsPath:=beego.AppConfig.String("nfspath")
+
+	volumes:=make([]v1.Volume,1)
+	volume:=v1.Volume{
+		Name:"nfs-storage",
+	}
+	volume.NFS=&v1.NFSVolumeSource{nfsServer, nfsPath, false}
+	volumes[0]=volume
+	pod.Spec.Volumes=volumes
+
+	volumeMounts:=make([]v1.VolumeMount,1)
+	volumeMount:=v1.VolumeMount{
+		Name:"nfs-storage",
+		MountPath:mountpath,
+		SubPath:subpath,
+	}
+	volumeMounts[0]=volumeMount
+	return volumeMounts
+}
 
 func (this * KubernetesClient)CreatePod(app K8sApp)(*v1.Pod,error){
 
-	pod:=new(v1.Pod)
-	pod.TypeMeta=metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"}
-	pod.ObjectMeta=metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace, Labels: map[string]string{"name": app.Name}}
-	pod.Spec=v1.PodSpec{
-		RestartPolicy: v1.RestartPolicyAlways,
-	}
-
-	var container v1.Container
-	if app.Types==TYPE_VNC{
-		container=this.createcontainer(app.Name,app.Image,app.Cmd,5900)
-	}else{
-		container=this.createcontainer(app.Name,app.Image,app.Cmd,app.TargetPort)
-	}
-	if len(app.Env)>0{
-		container.Env=app.Env
-	}
-
-	if app.Types==TYPE_RTIG{
-		nfsServer:=beego.AppConfig.String("nfsserver")
-		nfsPath:=beego.AppConfig.String("nfspath")
-
-		volumes:=make([]v1.Volume,1)
-		volume:=v1.Volume{
-			Name:"nfs-storage",
-		}
-		volume.NFS=&v1.NFSVolumeSource{nfsServer, nfsPath, false}
-		volumes[0]=volume
-		pod.Spec.Volumes=volumes
-
-		volumeMounts:=make([]v1.VolumeMount,1)
-		volumeMount:=v1.VolumeMount{
-			Name:"nfs-storage",
-			MountPath:"/root/certi/fom_files",
-			SubPath:app.Namespace+"/"+app.TaskName,
-		}
-		volumeMounts[0]=volumeMount
-		container.VolumeMounts=volumeMounts
-	}
-
-	pod.Spec.Containers= []v1.Container{container}
-
-	if app.Types==TYPE_VNC{
-		containernovnc:=this.createcontainer(app.Name+"-novnc",MajorRegistry.GetIpPort()+"/novnc",nil,app.TargetPort)
-		pod.Spec.Containers=append(pod.Spec.Containers,containernovnc)
-	}
-
-	result, err := this.K8sclient.CoreV1().Pods(app.Namespace).Create(pod)
+	err:=this.CreateNameSpace(app.Namespace)
 	if err !=nil{
-		fmt.Println(err.Error())
-	}
+		return nil,err
+	}else {
 
-	return result,err
+		pod := new(v1.Pod)
+		pod.TypeMeta = metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"}
+		pod.ObjectMeta = metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace, Labels: map[string]string{"name": app.Name}}
+		pod.Spec = v1.PodSpec{
+			RestartPolicy: v1.RestartPolicyAlways,
+		}
+
+		var container v1.Container
+		if app.Types == TYPE_VNC {
+			container = this.createcontainer(app.Name, app.Image, app.Cmd, 5900)
+		} else {
+			container = this.createcontainer(app.Name, app.Image, app.Cmd, app.TargetPort)
+		}
+		if len(app.Env) > 0 {
+			container.Env = app.Env
+		}
+
+		//rtig需要volume
+		if app.Types == TYPE_RTIG {
+			container.VolumeMounts = this.createvolume("/root/certi/fom_files", app.Namespace+"/"+app.TaskName, pod)
+		} else if app.Types == TYPE_TOOL {
+			container.VolumeMounts = this.createvolume("/usr/local/workspace", app.Namespace+"/"+app.TaskName, pod)
+		}
+
+		pod.Spec.Containers = []v1.Container{container}
+
+		//VNC成员需要启动novnc容器
+		if app.Types == TYPE_VNC {
+			containernovnc := this.createcontainer(app.Name+"-novnc", MajorRegistry.GetIpPort()+"/novnc", nil, app.TargetPort)
+			pod.Spec.Containers = append(pod.Spec.Containers, containernovnc)
+		}
+
+		result, err := this.K8sclient.CoreV1().Pods(app.Namespace).Create(pod)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+
+		return result, err
+	}
 }
 
 
@@ -206,18 +242,28 @@ func (this * KubernetesClient)RemoveService(namespace string,name string)error{
 		}
 		return err
 	}
-	return nil
+	return err
 
 }
 
 func (this * KubernetesClient)GetPod(namespace string,name string)(*v1.Pod,error){
 	pod,err:=this.K8sclient.CoreV1().Pods(namespace).Get(name,metav1.GetOptions{})
 	return pod,err
-
 }
 
+func (this * KubernetesClient)GetReplicationController(namespace string,name string)(*v1.ReplicationController,error){
+	rc,err:=this.K8sclient.CoreV1().ReplicationControllers(namespace).Get(name,metav1.GetOptions{})
+	return rc,err
+}
+
+func (this * KubernetesClient)GetService(namespace string,name string)(*v1.Service,error){
+	svc,err:=this.K8sclient.CoreV1().Services(namespace).Get(name,metav1.GetOptions{})
+	return svc,err
+}
+
+
 func (this * KubernetesClient)ShowLogs(namespace string,name string) (string,error){
-	request:=this.K8sclient.CoreV1().Pods(namespace).GetLogs(name,&v1.PodLogOptions{})
+	request:=this.K8sclient.CoreV1().Pods(namespace).GetLogs(name,&v1.PodLogOptions{Container:name})
 	result:=request.Do()
 	body,err:=result.Raw()
 	if err !=nil{

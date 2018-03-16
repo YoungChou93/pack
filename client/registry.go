@@ -122,6 +122,7 @@ func (this *Registry)Pull(imagename string)error{
 
 	ctx := context.Background()
 	cli, err := client.NewEnvClient()
+	defer cli.Close()
 	if err != nil {
 		return err
 	}

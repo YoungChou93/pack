@@ -32,14 +32,15 @@
         width:100px;
     }
     .td2{
-        text-align: center;
         vertical-align:middle;
     }
 
 </style>
 <script type="text/javascript">
-    var tasks;
-    var tasksindex;
+    var itemindex=-1;
+    var items;
+    var currentpage=1;
+    var pagerow=10;
     var url;
     var map;
     $(function() {
@@ -58,32 +59,65 @@
             }
         });
         list();
+        $("#pageadd").click(function () {
+            if(currentpage*pagerow<items.length){
+                currentpage++;
+                $("#pagenumber").text(currentpage);
+                show();
+            }
+        });
+
+        $("#pagesub").click(function () {
+            if(currentpage>1){
+                currentpage--;
+                $("#pagenumber").text(currentpage);
+                show();
+            }
+        });
+
     });
 
 
     function list() {
         $.post("/simulation/listtask", function (result) {
-            tasks=result;
-            $("#tasks").empty();
-            if(tasks!=null && tasks.length>0) {
-                $("#tasks").append("<tr><td class='td2' style='80px'>序号</td><td class='td2'>名称</td><td class='td2' >创建时间</td><td class='td2' style='80px'>成员</td></tr>");
+            if(result==null){
+                items=[];
+            }else {
+                items = result;
             }
-            var number;
-            $.each(result, function (index, element) {
-                number=index+1;
-                var optionStr = "<tr><td class='td2' style='80px'>"+number+
-                    "</td><td class='td2' style='80px'>" + element.Name +
-                    "</td><td class='td2' >" + element.Time +
-                    "</td><td class='td2' style='80px'>" + element.Members.length +
-                    "</td><td style='width:150px;'>" +
-                    "<button  class='btn btn-danger' onclick='preRemove("+index+")'><span class='glyphicon glyphicon-remove'></span></button>"+
-                    "<button  class='btn btn-info' onclick='preUpload("+index+")' style='margin-left: 5px;'><span class='glyphicon glyphicon-file'></span></button>"+
-                    "<button  class='btn btn-info' style='margin-left: 5px;' onclick='enter("+index+")'>" +
-                    "<span class='glyphicon glyphicon-chevron-right'></span></button></td></tr>";
-                $("#tasks").append(optionStr)
-            });
+            firstList();
         }, "json");
     }
+
+    function firstList() {
+        var totalpage=Math.ceil(items.length/pagerow);
+        $("#totalpage").text("共"+totalpage+"页");
+        show();
+
+    }
+
+    function show() {
+        var i=(currentpage-1)*pagerow;
+        var max=i+pagerow;
+        $("#tablebody").empty();
+        for(;i<max;i++){
+            var number=i+1;
+            var optionStr ="<tr>" +
+                "<th scope='row'>"+number+"</th>" +
+                "<td>"+items[i].Name+"</td>" +
+                "<td>"+items[i].Time+"</td>" +
+                "<td>"+items[i].Members.length+"</td>" +
+                "<td style='width:150px;'>" +
+            "<button  class='btn btn-danger' onclick='preRemove("+i+")'><span class='glyphicon glyphicon-trash'></span></button>"+
+            "<button  class='btn btn-info' onclick='preUpload("+i+")' style='margin-left: 5px;'><span class='glyphicon glyphicon-file'></span></button>"+
+            "<button  class='btn btn-info' style='margin-left: 5px;' onclick='enter("+i+")'><span class='glyphicon glyphicon-chevron-right'></span></button>" +
+                "</tr>";
+            $("#tablebody").append(optionStr);
+        }
+    }
+
+
+
 
     function addTask(){
         $('#addDialog').modal('show');
@@ -102,34 +136,32 @@
     }
 
 
-
-
     function enter(index){
-        $.StandardPost('/simulation/taskview',{namespace:tasks[index].Namespace,name:tasks[index].Name});
+        $.StandardPost('/simulation/taskview',{namespace:items[index].Namespace,name:items[index].Name});
     }
 
     function preRemove(index){
-        tasksindex=index;
+        itemindex=index;
         $("#dialogBody").empty();
-        var optionStr ="<p>确定要将<font color='red'>"+tasks[index].Name+"</font>删除吗?</p>";
+        var optionStr ="<p>确定要将<font color='red'>"+items[itemindex].Name+"</font>删除吗?</p>";
         $("#dialogBody").append(optionStr);
         $('#dialog').modal('show');
         url="/simulation/removetask";
         map={
-            namespace : tasks[index].Namespace,
-            name : tasks[index].Name
+            namespace : items[itemindex].Namespace,
+            name : items[itemindex].Name
         };
     }
 
     function preUpload(index) {
         $('#fileDialog').modal('show');
-        tasksindex=index;
+        itemindex=index;
     }
 
     function uploadFile(){
         var formData=new FormData($('#fileForm')[0]);
-        formData.append("namespace", tasks[tasksindex].Namespace);
-        formData.append("name", tasks[tasksindex].Name);
+        formData.append("namespace", items[itemindex].Namespace);
+        formData.append("name", items[itemindex].Name);
         $.ajax({
             url: "/simulation/uploadfile",
             type: 'POST',
@@ -143,10 +175,9 @@
             },
             success : function(data) {
                 if(data.Success){
-                    alert("上传成功！");
                     $('#fileDialog').modal('hide');
                 }else{
-                    alert(data.Reason);
+                    alert("上传失败"+data.Reason);
                 }
 
             }
@@ -166,15 +197,52 @@
 
 </script>
 <body>
+<div style="width: 100%;padding:5px;">
+<button type="button" onclick="addTask()" class="btn btn-primary"><i class="glyphicon glyphicon-plus"></i>创建</button>
+</div>
 <div class="container-fluid">
     <div class="row">
         <div class="panel panel-primary">
-            <div class="panel-heading"><h4>任务<span class="glyphicon glyphicon-plus" onclick="addTask()" style="float:right"></span></h4> </div>
-            <table class="table table-hover table-condensed table-striped" id="tasks">
+            <div class="panel-heading"><h4>仿真任务</h4> </div>
+            <table class="table" id="tasks">
+                <thead>
+                <tr>
+                    <th>编号</th>
+                    <th>任务名称</th>
+                    <th>创建时间</th>
+                    <th>成员数量</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody id="tablebody">
 
+                </tbody>
             </table>
         </div>
     </div>
+</div>
+<div class="footer">
+    <nav aria-label="...">
+        <ul class="pagination" style="margin: 0px;">
+            <li >
+                <span>
+                    <span id="pagesub" aria-hidden="true">上一页</span>
+                </span>
+            </li>
+            <li>
+                <span id="pagenumber">1 <span class="sr-only">(current)</span></span>
+            </li>
+
+            <li>
+                <span>
+                    <span id="pageadd" aria-hidden="true">下一页</span>
+                </span>
+            </li>
+            <li>
+                <span id="totalpage">1 </span>
+            </li>
+        </ul>
+    </nav>
 </div>
 <div class="modal fade" tabindex="-1" role="dialog" id="dialog">
     <div class="modal-dialog" role="document">
